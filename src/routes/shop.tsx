@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { supabase, type Category, type Product } from "@/integrations/supabase/client";
+import { useCachedQuery } from "@/hooks/useSupabaseCache";
 import { TopBar } from "@/components/TopBar";
 import { BottomNav } from "@/components/BottomNav";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,22 +10,33 @@ export const Route = createFileRoute("/shop")({
   component: ShopPage,
 });
 
-function ShopPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+async function fetchShopCategories(): Promise<Category[]> {
+  const { data } = await supabase
+    .from("categories")
+    .select("*")
+    .eq("is_active", true)
+    .order("display_order");
+  return (data as Category[] | null) ?? [];
+}
 
-  useEffect(() => {
-    (async () => {
-      const [{ data: cats }, { data: prods }] = await Promise.all([
-        supabase.from("categories").select("*").eq("is_active", true).order("display_order"),
-        supabase.from("products").select("*").eq("is_available", true).order("name"),
-      ]);
-      setCategories((cats as Category[] | null) ?? []);
-      setProducts((prods as Product[] | null) ?? []);
-      setLoading(false);
-    })();
-  }, []);
+async function fetchShopProducts(): Promise<Product[]> {
+  const { data } = await supabase
+    .from("products")
+    .select("*")
+    .eq("is_available", true)
+    .order("name");
+  return (data as Product[] | null) ?? [];
+}
+
+function ShopPage() {
+  const { data: catData, loading: catLoading } = useCachedQuery(
+    "shop:categories",
+    fetchShopCategories,
+  );
+  const { data: prodData } = useCachedQuery("shop:products", fetchShopProducts);
+  const categories = catData ?? [];
+  const products = prodData ?? [];
+  const loading = catLoading && categories.length === 0;
 
   return (
     <div className="min-h-[100dvh] pb-24">
