@@ -150,3 +150,32 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
     </div>
   );
 }
+
+function QuickTile({
+  to,
+  icon,
+  label,
+}: {
+  to:
+    | "/admin/orders"
+    | "/admin/products"
+    | "/admin/categories"
+    | "/admin/users"
+    | "/admin/slots"
+    | "/admin/banners"
+    | "/admin/settings";
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <Link
+      to={to}
+      className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-card p-4 text-center shadow-sm ring-1 ring-primary/5 hover:bg-secondary/40"
+    >
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
+        {icon}
+      </div>
+      <span className="font-display text-xs font-bold text-primary">{label}</span>
+    </Link>
+  );
+}
