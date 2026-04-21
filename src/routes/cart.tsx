@@ -1,12 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Trash2, Minus, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   supabase,
   type Address,
-  type DeliverySlot,
 } from "@/integrations/supabase/client";
 import {
   createRazorpayOrder,
@@ -18,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { getAvailableSlots } from "@/lib/deliverySlots";
 
 declare global {
   interface Window {
@@ -55,26 +55,34 @@ export const Route = createFileRoute("/cart")({
   component: CartPage,
 });
 
+const EMPTY_ADDR = {
+  label: "Home",
+  receiver_name: "",
+  receiver_phone: "",
+  full_address: "",
+  city: "",
+  pincode: "",
+};
+
 function CartPage() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const { items, setQuantity, remove, subtotal, clear } = useCart();
   const [addresses, setAddresses] = useState<Address[]>([]);
-  const [slots, setSlots] = useState<DeliverySlot[]>([]);
   const [addressId, setAddressId] = useState<string>("");
   const [slotId, setSlotId] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "online">("cod");
   const [deliveryCharge, setDeliveryCharge] = useState(20);
   const [freeDeliveryAbove, setFreeDeliveryAbove] = useState(500);
   const [submitting, setSubmitting] = useState(false);
+  // Hard guard against double-clicks creating duplicate orders
+  const placingRef = useRef(false);
+
+  // Generated slots based on current time. Recomputed once per mount.
+  const slots = useMemo(() => getAvailableSlots(new Date()), []);
 
   // new address form
-  const [newAddr, setNewAddr] = useState({
-    label: "Home",
-    full_address: "",
-    city: "",
-    pincode: "",
-  });
+  const [newAddr, setNewAddr] = useState(EMPTY_ADDR);
   const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
@@ -86,15 +94,6 @@ function CartPage() {
         if (dc) setDeliveryCharge(Number(dc.value));
         if (fd) setFreeDeliveryAbove(Number(fd.value));
       }
-      const today = new Date().toISOString().slice(0, 10);
-      const { data: slotData } = await supabase
-        .from("delivery_slots")
-        .select("*")
-        .eq("is_active", true)
-        .gte("slot_date", today)
-        .order("slot_date")
-        .limit(20);
-      setSlots((slotData as DeliverySlot[] | null) ?? []);
     })();
   }, []);
 
@@ -113,12 +112,35 @@ function CartPage() {
     })();
   }, [user]);
 
+  // Prefill name/phone when opening the new-address form
+  useEffect(() => {
+    if (showAddForm) {
+      setNewAddr((a) => ({
+        ...a,
+        receiver_name: a.receiver_name || profile?.full_name || "",
+        receiver_phone: a.receiver_phone || profile?.phone_number || profile?.phone || "",
+      }));
+    }
+  }, [showAddForm, profile]);
+
   const sub = subtotal();
   const dc = sub >= freeDeliveryAbove ? 0 : deliveryCharge;
   const total = sub + dc;
 
   const saveNewAddress = async () => {
     if (!user) return;
+    if (!newAddr.receiver_name.trim()) {
+      toast.error("Receiver name is required");
+      return;
+    }
+    if (!/^[0-9]{10}$/.test(newAddr.receiver_phone)) {
+      toast.error("Phone must be 10 digits");
+      return;
+    }
+    if (!newAddr.full_address.trim() || !newAddr.city.trim()) {
+      toast.error("Address and city are required");
+      return;
+    }
     if (!/^\d{6}$/.test(newAddr.pincode)) {
       toast.error("Pincode must be 6 digits");
       return;
@@ -136,7 +158,7 @@ function CartPage() {
     setAddresses((prev) => [created, ...prev]);
     setAddressId(created.id);
     setShowAddForm(false);
-    setNewAddr({ label: "Home", full_address: "", city: "", pincode: "" });
+    setNewAddr(EMPTY_ADDR);
     toast.success("Address saved");
   };
 
@@ -203,6 +225,9 @@ function CartPage() {
   };
 
   const placeOrder = async () => {
+    // Hard guard: prevents double-tap from creating two orders even if React
+    // hasn't flushed `submitting` yet.
+    if (placingRef.current) return;
     if (!user) {
       navigate({ to: "/login" });
       return;
@@ -212,18 +237,29 @@ function CartPage() {
       toast.error("Please add a delivery address");
       return;
     }
+    if (!slotId) {
+      toast.error("Please choose a delivery slot");
+      return;
+    }
+    const chosenSlot = slots.find((s) => s.id === slotId);
+    placingRef.current = true;
     setSubmitting(true);
     try {
+      // Slots in this app are generated on the fly, not stored — we record
+      // the selection in `notes` so admins/merchants can read it back.
+      const slotNote = chosenSlot ? `[slot] ${chosenSlot.label}` : null;
+
       const { data: order, error: orderErr } = await supabase
         .from("orders")
         .insert({
           user_id: user.id,
           address_id: addressId,
-          delivery_slot_id: slotId || null,
+          delivery_slot_id: null,
           status: "pending",
           total_amount: total,
           payment_method: paymentMethod,
           payment_status: "pending",
+          notes: slotNote,
         })
         .select()
         .single();
@@ -255,6 +291,10 @@ function CartPage() {
       toast.error(msg);
     } finally {
       setSubmitting(false);
+      // Release guard a moment later so the navigate has time to unmount
+      setTimeout(() => {
+        placingRef.current = false;
+      }, 1000);
     }
   };
 
@@ -361,6 +401,9 @@ function CartPage() {
                         <RadioGroupItem value={a.id} className="mt-1" />
                         <div className="text-sm">
                           <p className="font-semibold text-primary">{a.label}</p>
+                          <p className="text-foreground">
+                            {a.receiver_name} · {a.receiver_phone}
+                          </p>
                           <p className="text-muted-foreground">
                             {a.full_address}, {a.city} - {a.pincode}
                           </p>
@@ -381,6 +424,33 @@ function CartPage() {
 
               {showAddForm && (
                 <div className="mt-3 space-y-2 rounded-xl bg-background p-3">
+                  <div>
+                    <Label className="text-xs">
+                      Receiver name <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      value={newAddr.receiver_name}
+                      onChange={(e) => setNewAddr({ ...newAddr, receiver_name: e.target.value })}
+                      placeholder="Full name"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">
+                      Phone <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      value={newAddr.receiver_phone}
+                      maxLength={10}
+                      inputMode="numeric"
+                      onChange={(e) =>
+                        setNewAddr({
+                          ...newAddr,
+                          receiver_phone: e.target.value.replace(/\D/g, ""),
+                        })
+                      }
+                      placeholder="10 digit mobile"
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <Label className="text-xs">Label</Label>
@@ -390,10 +460,13 @@ function CartPage() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Pincode</Label>
+                      <Label className="text-xs">
+                        Pincode <span className="text-destructive">*</span>
+                      </Label>
                       <Input
                         value={newAddr.pincode}
                         maxLength={6}
+                        inputMode="numeric"
                         onChange={(e) =>
                           setNewAddr({ ...newAddr, pincode: e.target.value.replace(/\D/g, "") })
                         }
@@ -401,7 +474,9 @@ function CartPage() {
                     </div>
                   </div>
                   <div>
-                    <Label className="text-xs">Full Address</Label>
+                    <Label className="text-xs">
+                      Full Address <span className="text-destructive">*</span>
+                    </Label>
                     <Input
                       value={newAddr.full_address}
                       onChange={(e) =>
@@ -410,7 +485,9 @@ function CartPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">City</Label>
+                    <Label className="text-xs">
+                      City <span className="text-destructive">*</span>
+                    </Label>
                     <Input
                       value={newAddr.city}
                       onChange={(e) => setNewAddr({ ...newAddr, city: e.target.value })}
@@ -427,7 +504,10 @@ function CartPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setShowAddForm(false)}
+                      onClick={() => {
+                        setShowAddForm(false);
+                        setNewAddr(EMPTY_ADDR);
+                      }}
                     >
                       Cancel
                     </Button>
@@ -436,26 +516,25 @@ function CartPage() {
               )}
             </section>
 
-            {/* Slot */}
-            {slots.length > 0 && (
-              <section className="mt-4 rounded-2xl bg-card p-4">
-                <h2 className="mb-2 font-display font-bold text-primary">Delivery Slot</h2>
-                <RadioGroup value={slotId} onValueChange={setSlotId}>
-                  {slots.map((s) => (
-                    <label
-                      key={s.id}
-                      className="flex cursor-pointer items-center gap-2 rounded-lg p-2 hover:bg-background"
-                    >
-                      <RadioGroupItem value={s.id} />
-                      <div className="text-sm">
-                        <p className="font-semibold text-primary">{s.slot_label}</p>
-                        <p className="text-xs text-muted-foreground">{s.slot_date}</p>
-                      </div>
-                    </label>
-                  ))}
-                </RadioGroup>
-              </section>
-            )}
+            {/* Slot — generated client-side from order time */}
+            <section className="mt-4 rounded-2xl bg-card p-4">
+              <h2 className="mb-2 font-display font-bold text-primary">
+                Delivery Slot <span className="text-destructive">*</span>
+              </h2>
+              <RadioGroup value={slotId} onValueChange={setSlotId}>
+                {slots.map((s) => (
+                  <label
+                    key={s.id}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg p-2 hover:bg-background"
+                  >
+                    <RadioGroupItem value={s.id} />
+                    <div className="text-sm">
+                      <p className="font-semibold text-primary">{s.label}</p>
+                    </div>
+                  </label>
+                ))}
+              </RadioGroup>
+            </section>
 
             {/* Payment */}
             <section className="mt-4 rounded-2xl bg-card p-4">

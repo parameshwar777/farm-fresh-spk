@@ -4,6 +4,7 @@ import { useState } from "react";
 import { SplashScreen } from "@/components/SplashScreen";
 import { AuthGate } from "@/components/AuthGate";
 import { PageTransition } from "@/components/PageTransition";
+import { AuthProvider } from "@/hooks/useAuth";
 
 import appCss from "../styles.css?url";
 
@@ -97,11 +98,13 @@ function RootComponent() {
 
   return (
     <div className="mobile-frame">
-      <AuthGate>
-        <PageTransition>
-          <Outlet />
-        </PageTransition>
-      </AuthGate>
+      <AuthProvider>
+        <AuthGate>
+          <PageTransition>
+            <Outlet />
+          </PageTransition>
+        </AuthGate>
+      </AuthProvider>
       {/* Splash sits on top — covers any auth-redirect flicker underneath */}
       {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
       <Toaster position="top-center" richColors closeButton theme="light" />

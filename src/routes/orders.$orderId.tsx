@@ -17,10 +17,10 @@ export const Route = createFileRoute("/orders/$orderId")({
 });
 
 const STEPS: { key: OrderStatus; label: string }[] = [
-  { key: "pending", label: "Pending" },
-  { key: "confirmed", label: "Confirmed" },
-  { key: "packing", label: "Packing" },
-  { key: "out_for_delivery", label: "Out for Delivery" },
+  { key: "pending", label: "Order placed" },
+  { key: "confirmed", label: "Payment received / Confirmed" },
+  { key: "packing", label: "Packing your order" },
+  { key: "out_for_delivery", label: "Out for delivery" },
   { key: "delivered", label: "Delivered" },
 ];
 
@@ -97,6 +97,25 @@ function OrderTrackingPage() {
         <p className="text-sm text-muted-foreground">
           Placed on {format(new Date(order.created_at), "dd MMM yyyy, hh:mm a")}
         </p>
+        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-card px-2 py-0.5 font-semibold text-primary">
+            {order.payment_method === "online" ? "Online" : "Cash on Delivery"}
+          </span>
+          <span
+            className={`rounded-full px-2 py-0.5 font-semibold ${
+              order.payment_status === "paid"
+                ? "bg-success text-success-foreground"
+                : "bg-warning text-warning-foreground"
+            }`}
+          >
+            {order.payment_status === "paid" ? "Payment received" : "Payment pending"}
+          </span>
+          {order.notes?.startsWith("[slot]") && (
+            <span className="rounded-full bg-secondary px-2 py-0.5 font-semibold text-secondary-foreground">
+              {order.notes.replace("[slot] ", "🕒 ")}
+            </span>
+          )}
+        </div>
 
         {order.status === "cancelled" ? (
           <div className="mt-4 rounded-2xl bg-destructive/10 p-4 text-center font-bold text-destructive">
