@@ -120,6 +120,32 @@ function AdminProducts() {
     load();
   };
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const onPickImage = async (file: File) => {
+    if (!editing) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5 MB");
+      return;
+    }
+    setUploading(true);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${crypto.randomUUID()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("product-images")
+      .upload(path, file, { upsert: false, contentType: file.type });
+    if (upErr) {
+      setUploading(false);
+      toast.error(upErr.message);
+      return;
+    }
+    const { data: pub } = supabase.storage.from("product-images").getPublicUrl(path);
+    setEditing({ ...editing, image_url: pub.publicUrl, use_real_image: true });
+    setUploading(false);
+    toast.success("Image uploaded");
+  };
+
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
@@ -146,11 +172,16 @@ function AdminProducts() {
       <ul className="space-y-2">
         {filtered.map((p) => (
           <li key={p.id} className="flex items-center gap-3 rounded-2xl bg-card p-3">
-            <span className="text-2xl">{p.emoji}</span>
+            <ProductImage
+              product={p}
+              className="h-12 w-12 bg-background"
+              emojiClassName="text-2xl"
+            />
             <div className="flex-1">
               <p className="font-semibold text-primary">{p.name}</p>
               <p className="text-xs text-muted-foreground">
                 ₹{p.price} · stock {p.stock_quantity}
+                {p.use_real_image && p.image_url ? " · 📷" : ""}
               </p>
             </div>
             <Switch checked={p.is_available} onCheckedChange={() => toggleAvailable(p)} />
