@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { LogOut, ShoppingBag, MapPin, Settings } from "lucide-react";
+import { LogOut, ShoppingBag, MapPin, Settings, FileText, Shield, Info } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, signOut } from "@/hooks/useAuth";
@@ -114,6 +114,15 @@ function ProfilePage() {
         <ul className="mt-4 space-y-2">
           <ProfileLink to="/orders" icon={<ShoppingBag className="h-5 w-5" />} label="My Orders" />
           <ProfileLink to="/addresses" icon={<MapPin className="h-5 w-5" />} label="Addresses" />
+        </ul>
+
+        <p className="mt-6 mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Legal & info
+        </p>
+        <ul className="space-y-2">
+          <ProfileLink to="/about" icon={<Info className="h-5 w-5" />} label="About Us" />
+          <ProfileLink to="/terms" icon={<FileText className="h-5 w-5" />} label="Terms & Conditions" />
+          <ProfileLink to="/privacy" icon={<Shield className="h-5 w-5" />} label="Privacy Policy" />
           <li>
             <button
               onClick={handleLogout}
@@ -140,7 +149,7 @@ function ProfileLink({
   icon,
   label,
 }: {
-  to: "/orders" | "/addresses";
+  to: "/orders" | "/addresses" | "/about" | "/terms" | "/privacy";
   icon: React.ReactNode;
   label: string;
 }) {
