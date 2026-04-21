@@ -1,13 +1,19 @@
 -- =====================================================================
--- Run this in Supabase Dashboard → SQL Editor → New Query → Run
--- This is IDEMPOTENT — safe to run multiple times.
+-- IMPORTANT: This file has TWO PARTS. Run them as TWO SEPARATE QUERIES.
+-- Postgres does NOT allow a new enum value to be used in the same
+-- transaction that adds it. The SQL editor runs each query in its own
+-- transaction, so we MUST split this.
 --
--- 1) Adds 'merchant' to app_role enum
--- 2) Adds email + phone_number columns to profiles
--- 3) Updates signup trigger to populate email + phone from auth.users
--- 4) Adds is_merchant() helper + RLS for merchants on paid orders
--- 5) Updates RLS so admins can update any profile (for promoting users)
+-- STEP 1: Select ONLY the lines between "PART 1 START" and "PART 1 END"
+--         and click "Run".
+-- STEP 2: Then select ONLY the lines between "PART 2 START" and "PART 2 END"
+--         and click "Run".
 -- =====================================================================
+
+
+-- ============================ PART 1 START ============================
+-- Adds the 'merchant' enum value, profile columns, and signup trigger.
+-- Run this FIRST. Wait for "Success".
 
 -- 1) Add 'merchant' to the app_role enum (idempotent)
 do $$
@@ -59,6 +65,14 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- ============================ PART 1 END ==============================
+
+
+
+-- ============================ PART 2 START ============================
+-- Adds is_merchant() helper and RLS policies that USE the 'merchant' value.
+-- Run this AFTER Part 1 has succeeded.
 
 -- 4) Helper functions
 create or replace function public.is_admin(_user_id uuid)
@@ -144,7 +158,10 @@ create policy "addresses own" on public.addresses
   )
   with check (auth.uid() = user_id);
 
+-- ============================ PART 2 END ==============================
+
+
 -- =====================================================================
--- HOW TO MAKE YOURSELF ADMIN (run once, after signing up):
+-- HOW TO MAKE YOURSELF ADMIN (run as a third query after Parts 1 + 2):
 --   update public.profiles set role='admin' where lower(email)=lower('your@email.com');
 -- =====================================================================
