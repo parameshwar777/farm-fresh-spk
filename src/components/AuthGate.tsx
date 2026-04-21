@@ -5,7 +5,7 @@ import { SpkLogo } from "@/components/SpkLogo";
 import { motion } from "framer-motion";
 
 // Routes that do NOT require auth
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/reset-password"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
