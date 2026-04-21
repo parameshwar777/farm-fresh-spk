@@ -7,6 +7,7 @@ import { SpkLogo } from "@/components/SpkLogo";
 import { TopBar } from "@/components/TopBar";
 import { BottomNav } from "@/components/BottomNav";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ProductImage } from "@/components/ProductImage";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -326,13 +327,13 @@ function HomePage() {
                     params={{ productId: p.id }}
                     className="block w-36 flex-shrink-0 rounded-2xl bg-card p-3 shadow-sm ring-1 ring-primary/5"
                   >
-                    <div className="relative flex h-24 items-center justify-center rounded-xl bg-gradient-to-br from-secondary/30 to-accent/20 text-5xl">
-                      <motion.span
-                        whileHover={{ scale: 1.15, rotate: 6 }}
-                        transition={{ type: "spring", stiffness: 250 }}
-                      >
-                        {p.emoji}
-                      </motion.span>
+                    <div className="relative h-24 overflow-hidden rounded-xl bg-gradient-to-br from-secondary/30 to-accent/20">
+                      <ProductImage
+                        product={p}
+                        className="h-full w-full"
+                        emojiClassName="text-5xl"
+                        rounded="xl"
+                      />
                       <span className="absolute top-1.5 left-1.5 rounded-full bg-spk-badge px-1.5 py-0.5 text-[8px] font-bold text-spk-badge-fg">
                         SPK
                       </span>
