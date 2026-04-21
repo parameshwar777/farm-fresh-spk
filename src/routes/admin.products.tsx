@@ -84,6 +84,8 @@ function AdminProducts() {
       stock_quantity: Number(editing.stock_quantity ?? 0),
       category_id: editing.category_id,
       emoji: editing.emoji ?? "🥦",
+      image_url: editing.image_url ?? null,
+      use_real_image: editing.use_real_image ?? false,
       harvest_date: editing.harvest_date ?? null,
       farming_method: editing.farming_method ?? "SPK Method",
       is_available: editing.is_available ?? true,
