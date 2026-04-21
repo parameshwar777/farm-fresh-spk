@@ -16,14 +16,27 @@ function ProfilePage() {
   const navigate = useNavigate();
   const { user, profile, loading } = useAuth();
   const [orderCount, setOrderCount] = useState(0);
+  const clearCart = useCart((s) => s.clear);
 
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
     supabase
       .from("orders")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .then(({ count }) => setOrderCount(count ?? 0));
+      .then(({ count, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.error("[profile] order count error:", error);
+          setOrderCount(0);
+          return;
+        }
+        setOrderCount(count ?? 0);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   if (loading) return null;
@@ -54,7 +67,6 @@ function ProfilePage() {
       .toUpperCase()
       .slice(0, 2) || "?";
 
-  const clearCart = useCart((s) => s.clear);
   const handleLogout = async () => {
     if (!confirm("Sign out of SPK Natural Farming?")) return;
     await signOut();
@@ -87,6 +99,14 @@ function ProfilePage() {
               className="mt-3 rounded-full bg-secondary px-4 py-1.5 text-xs font-bold text-secondary-foreground"
             >
               Open Admin Panel
+            </Link>
+          )}
+          {profile?.role === "merchant" && (
+            <Link
+              to="/merchant"
+              className="mt-3 rounded-full bg-accent px-4 py-1.5 text-xs font-bold text-accent-foreground"
+            >
+              Open Merchant Panel
             </Link>
           )}
         </div>

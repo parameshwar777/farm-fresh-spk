@@ -108,6 +108,9 @@ function LoginPage() {
       } else if (result.role === "admin") {
         toast.success("Welcome back, admin");
         navigate({ to: "/admin" });
+      } else if (result.role === "merchant") {
+        toast.success("Welcome back, merchant");
+        navigate({ to: "/merchant" });
       } else {
         toast.success("Welcome back!");
         navigate({ to: "/" });
@@ -162,6 +165,9 @@ function LoginPage() {
         if (profile?.role === "admin") {
           toast.success("Welcome back, admin");
           navigate({ to: "/admin" });
+        } else if (profile?.role === "merchant") {
+          toast.success("Welcome back, merchant");
+          navigate({ to: "/merchant" });
         } else {
           toast.success("Welcome back!");
           navigate({ to: "/" });

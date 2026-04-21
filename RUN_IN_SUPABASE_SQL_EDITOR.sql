@@ -1,11 +1,27 @@
 -- =====================================================================
 -- Run this in Supabase Dashboard → SQL Editor → New Query → Run
--- 1) Adds email + phone_number columns
--- 2) Updates trigger to populate email + phone from auth.users on signup
--- 3) Wipes all existing users for a clean start
+-- This is IDEMPOTENT — safe to run multiple times.
+--
+-- 1) Adds 'merchant' to app_role enum
+-- 2) Adds email + phone_number columns to profiles
+-- 3) Updates signup trigger to populate email + phone from auth.users
+-- 4) Adds is_merchant() helper + RLS for merchants on paid orders
+-- 5) Updates RLS so admins can update any profile (for promoting users)
 -- =====================================================================
 
--- 1) Add new columns (idempotent)
+-- 1) Add 'merchant' to the app_role enum (idempotent)
+do $$
+begin
+  if not exists (
+    select 1 from pg_enum e
+    join pg_type t on t.oid = e.enumtypid
+    where t.typname = 'app_role' and e.enumlabel = 'merchant'
+  ) then
+    alter type public.app_role add value 'merchant';
+  end if;
+end $$;
+
+-- 2) Add new profile columns (idempotent)
 alter table public.profiles
   add column if not exists email text,
   add column if not exists phone_number text;
@@ -14,7 +30,7 @@ create unique index if not exists profiles_email_unique
   on public.profiles (lower(email))
   where email is not null;
 
--- 2) Replace the signup trigger to fill email + phone_number from auth.users
+-- 3) Replace signup trigger to fill email + phone_number from auth.users
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -44,6 +60,91 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- 3) RESET: remove ALL existing users (cascades to profiles, addresses, orders, etc.)
-delete from public.profiles;
-delete from auth.users;
+-- 4) Helper functions
+create or replace function public.is_admin(_user_id uuid)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = _user_id and role = 'admin'
+  );
+$$;
+
+create or replace function public.is_merchant(_user_id uuid)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = _user_id and role = 'merchant'
+  );
+$$;
+
+-- 5) Update RLS policies
+
+-- profiles: admin/merchant can read other profiles; admin can update any
+drop policy if exists "profiles self read" on public.profiles;
+create policy "profiles self read" on public.profiles
+  for select using (
+    auth.uid() = id
+    or public.is_admin(auth.uid())
+    or public.is_merchant(auth.uid())
+  );
+
+drop policy if exists "profiles self update" on public.profiles;
+create policy "profiles self update" on public.profiles
+  for update using (auth.uid() = id or public.is_admin(auth.uid()))
+  with check (auth.uid() = id or public.is_admin(auth.uid()));
+
+-- orders: merchants can read AND update PAID orders only
+drop policy if exists "orders own read" on public.orders;
+create policy "orders own read" on public.orders
+  for select using (
+    auth.uid() = user_id
+    or public.is_admin(auth.uid())
+    or (public.is_merchant(auth.uid()) and payment_status = 'paid')
+  );
+
+drop policy if exists "orders admin update" on public.orders;
+create policy "orders admin update" on public.orders
+  for update using (
+    public.is_admin(auth.uid())
+    or auth.uid() = user_id
+    or (public.is_merchant(auth.uid()) and payment_status = 'paid')
+  )
+  with check (
+    public.is_admin(auth.uid())
+    or auth.uid() = user_id
+    or (public.is_merchant(auth.uid()) and payment_status = 'paid')
+  );
+
+-- order_items: merchants can read items of paid orders
+drop policy if exists "order_items own read" on public.order_items;
+create policy "order_items own read" on public.order_items
+  for select using (
+    exists (
+      select 1 from public.orders o
+      where o.id = order_items.order_id
+        and (
+          o.user_id = auth.uid()
+          or public.is_admin(auth.uid())
+          or (public.is_merchant(auth.uid()) and o.payment_status = 'paid')
+        )
+    )
+  );
+
+-- addresses: merchants need to read addresses for delivery
+drop policy if exists "addresses own" on public.addresses;
+create policy "addresses own" on public.addresses
+  for all using (
+    auth.uid() = user_id
+    or public.is_admin(auth.uid())
+    or public.is_merchant(auth.uid())
+  )
+  with check (auth.uid() = user_id);
+
+-- =====================================================================
+-- HOW TO MAKE YOURSELF ADMIN (run once, after signing up):
+--   update public.profiles set role='admin' where lower(email)=lower('your@email.com');
+-- =====================================================================

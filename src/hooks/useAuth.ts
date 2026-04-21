@@ -48,7 +48,14 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  return { session, user, profile, loading, isAdmin: profile?.role === "admin" };
+  return {
+    session,
+    user,
+    profile,
+    loading,
+    isAdmin: profile?.role === "admin",
+    isMerchant: profile?.role === "merchant",
+  };
 }
 
 export async function signOut() {
