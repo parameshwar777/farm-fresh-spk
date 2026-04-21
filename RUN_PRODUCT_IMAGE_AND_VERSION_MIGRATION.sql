@@ -7,13 +7,14 @@
 alter table public.products
   add column if not exists use_real_image boolean not null default false;
 
--- 2) App settings: seed app version keys (admin can edit from /admin/settings)
+-- 2) App settings: seed app version + admin whatsapp keys (admin can edit from /admin/settings)
 insert into public.app_settings (key, value) values
   ('min_app_version', '1.0.0'),
   ('current_app_version', '1.0.0'),
   ('app_update_message', 'A new version of SPK Natural Farming is available. Please update to continue.'),
   ('app_store_url_android', ''),
-  ('app_store_url_ios', '')
+  ('app_store_url_ios', ''),
+  ('admin_whatsapp_number', '9440229378')
 on conflict (key) do nothing;
 
 -- 3) Storage bucket for product images (public read)
