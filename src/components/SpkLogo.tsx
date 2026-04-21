@@ -31,7 +31,7 @@ export function SpkLogo({ size = 120, className = "", framed = true }: SpkLogoPr
         alt="SPK Natural Farming logo"
         width={size}
         height={size}
-        className="absolute inset-0 h-full w-full scale-[1.18] object-cover"
+        className="absolute inset-0 h-full w-full object-contain"
         style={{ objectPosition: "center" }}
       />
     </div>
