@@ -462,15 +462,17 @@ function CartPage() {
               <h2 className="mb-2 font-display font-bold text-primary">Payment</h2>
               <RadioGroup
                 value={paymentMethod}
-                onValueChange={(v) => setPaymentMethod(v as "cod" | "upi")}
+                onValueChange={(v) => setPaymentMethod(v as "cod" | "online")}
               >
                 <label className="flex cursor-pointer items-center gap-2 rounded-lg p-2 hover:bg-background">
                   <RadioGroupItem value="cod" />
                   <span className="text-sm font-semibold text-primary">💵 Cash on Delivery</span>
                 </label>
                 <label className="flex cursor-pointer items-center gap-2 rounded-lg p-2 hover:bg-background">
-                  <RadioGroupItem value="upi" />
-                  <span className="text-sm font-semibold text-primary">📱 UPI</span>
+                  <RadioGroupItem value="online" />
+                  <span className="text-sm font-semibold text-primary">
+                    📱 UPI / Card / Net Banking
+                  </span>
                 </label>
               </RadioGroup>
             </section>
