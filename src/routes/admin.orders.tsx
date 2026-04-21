@@ -34,8 +34,16 @@ const STATUSES: OrderStatus[] = [
   "cancelled",
 ];
 
-// Admin's WhatsApp number — change here if needed
-const ADMIN_WHATSAPP = "919440229378"; // 91 = India country code
+// Default fallback used if admin hasn't configured a number in settings
+const DEFAULT_ADMIN_WHATSAPP = "919440229378"; // 91 = India country code
+
+function normalizeWhatsAppNumber(raw: string | undefined | null): string {
+  const digits = (raw ?? "").replace(/\D/g, "");
+  if (!digits) return DEFAULT_ADMIN_WHATSAPP;
+  // If user entered a 10-digit Indian number, prepend 91
+  if (digits.length === 10) return `91${digits}`;
+  return digits;
+}
 
 type EnrichedOrder = Order & {
   items: (OrderItem & { product?: Pick<Product, "name" | "emoji" | "unit"> })[];
