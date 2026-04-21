@@ -24,7 +24,12 @@ export const Route = createFileRoute("/admin")({
 
 function AdminLayout() {
   const location = useLocation();
-  const navItems = [
+  const navItems: Array<{
+    to: "/admin" | "/admin/products" | "/admin/categories" | "/admin/orders" | "/admin/slots" | "/admin/banners" | "/admin/settings";
+    icon: typeof LayoutDashboard;
+    label: string;
+    exact?: boolean;
+  }> = [
     { to: "/admin", icon: LayoutDashboard, label: "Dashboard", exact: true },
     { to: "/admin/products", icon: Package, label: "Products" },
     { to: "/admin/categories", icon: Folder, label: "Categories" },
@@ -32,7 +37,7 @@ function AdminLayout() {
     { to: "/admin/slots", icon: Clock, label: "Slots" },
     { to: "/admin/banners", icon: Image, label: "Banners" },
     { to: "/admin/settings", icon: SettingsIcon, label: "Settings" },
-  ] as const;
+  ];
 
   return (
     <div className="min-h-[100dvh] pb-20">
