@@ -12,6 +12,7 @@ interface VerifyResult {
   success: boolean;
   is_new_user?: boolean;
   user_id?: string;
+  role?: string;
   error?: string;
 }
 
@@ -69,6 +70,7 @@ export function useOTP() {
         success: true,
         is_new_user: data?.is_new_user,
         user_id: data?.user_id,
+        role: data?.role,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to verify OTP";
@@ -86,4 +88,3 @@ export function useOTP() {
 
   return { sendOTP, verifyOTP, loading, error, otpSent, reset };
 }
-

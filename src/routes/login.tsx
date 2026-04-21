@@ -1,14 +1,29 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Mail, Phone, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Mail, Phone, ShieldCheck, Sparkles, Check } from "lucide-react";
 import { SpkLogo } from "@/components/SpkLogo";
 import { useOTP, type OTPType } from "@/hooks/useOTP";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
+
+const RESEND_SECONDS = 60;
+
+function maskPhone(phoneDigits: string) {
+  // last 4 digits
+  const last4 = phoneDigits.slice(-4);
+  return `XXXXXX${last4}`;
+}
+
+function maskEmail(email: string) {
+  const [user, domain] = email.split("@");
+  if (!user || !domain) return email;
+  const visible = user.slice(0, 2);
+  return `${visible}${"*".repeat(Math.max(1, user.length - 2))}@${domain}`;
+}
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -17,10 +32,34 @@ function LoginPage() {
   const [otpInput, setOtpInput] = useState("");
   const [needsName, setNeedsName] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [showSentCheck, setShowSentCheck] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { sendOTP, verifyOTP, loading, error, otpSent, reset } = useOTP();
 
   const cleanIdentifier = () =>
     mode === "phone" ? `+91${identifier.replace(/\D/g, "")}` : identifier.trim();
+
+  const startTimer = () => {
+    setSecondsLeft(RESEND_SECONDS);
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setSecondsLeft((s) => {
+        if (s <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,20 +73,40 @@ function LoginPage() {
     }
     const result = await sendOTP(cleanIdentifier(), mode);
     if (result.success) {
-      toast.success(`OTP sent to your ${mode === "phone" ? "phone" : "email"}`);
+      const masked =
+        mode === "phone"
+          ? `mobile number ending in ${identifier.replace(/\D/g, "").slice(-4)}`
+          : maskEmail(identifier.trim());
+      setSentTo(masked);
+      setShowSentCheck(true);
+      setTimeout(() => setShowSentCheck(false), 1800);
+      startTimer();
+    }
+  };
+
+  const handleResend = async () => {
+    if (secondsLeft > 0 || loading) return;
+    const result = await sendOTP(cleanIdentifier(), mode);
+    if (result.success) {
+      setShowSentCheck(true);
+      setTimeout(() => setShowSentCheck(false), 1800);
+      startTimer();
+      toast.success("OTP sent again");
     }
   };
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otpInput.length !== 6) {
-      toast.error("Enter the 6-digit OTP");
       return;
     }
     const result = await verifyOTP(cleanIdentifier(), mode, otpInput);
     if (result.success) {
       if (result.is_new_user) {
         setNeedsName(true);
+      } else if (result.role === "admin") {
+        toast.success("Welcome back, admin");
+        navigate({ to: "/admin" });
       } else {
         toast.success("Welcome back!");
         navigate({ to: "/" });
@@ -61,7 +120,6 @@ function LoginPage() {
       toast.error("Please enter your name");
       return;
     }
-    // Profile name update is handled by the verify-otp edge function or after-login flow.
     toast.success(`Welcome, ${fullName.split(" ")[0]}!`);
     navigate({ to: "/" });
   };
@@ -71,8 +129,13 @@ function LoginPage() {
     setMode(m);
     setIdentifier("");
     setOtpInput("");
+    setSentTo(null);
+    setSecondsLeft(0);
+    if (timerRef.current) clearInterval(timerRef.current);
     reset();
   };
+
+  const mmss = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")}`;
 
   return (
     <div
@@ -149,7 +212,7 @@ function LoginPage() {
               </h2>
               <p className="mb-4 text-xs text-muted-foreground">
                 {otpSent
-                  ? `We sent a 6-digit code to ${cleanIdentifier()}`
+                  ? `Enter the 6-digit code we sent you`
                   : "Get a one-time code on your phone or email"}
               </p>
 
@@ -243,15 +306,30 @@ function LoginPage() {
                     transition={{ duration: 0.25 }}
                     className="space-y-3"
                   >
+                    {/* Sent confirmation */}
                     <motion.div
                       initial={{ opacity: 0, y: -6 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-center"
+                      className="flex items-start gap-2 rounded-xl border border-success/30 bg-success/10 px-3 py-2"
                     >
-                      <p className="text-[11px] font-medium text-primary/80">
-                        {mode === "phone"
-                          ? "Check your SMS for the 6-digit code"
-                          : "Check your email inbox (and spam) for the 6-digit code"}
+                      <AnimatePresence mode="wait">
+                        {showSentCheck ? (
+                          <motion.div
+                            key="check"
+                            initial={{ scale: 0, rotate: -90 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            exit={{ scale: 0 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 18 }}
+                            className="mt-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-success text-white"
+                          >
+                            <Check className="h-3 w-3" strokeWidth={3} />
+                          </motion.div>
+                        ) : (
+                          <ShieldCheck key="shield" className="mt-0.5 h-4 w-4 text-success" />
+                        )}
+                      </AnimatePresence>
+                      <p className="text-[11px] font-medium text-success-foreground/90">
+                        OTP sent to {sentTo}
                       </p>
                     </motion.div>
 
@@ -265,17 +343,21 @@ function LoginPage() {
                         setOtpInput(e.target.value.replace(/\D/g, "").slice(0, 6))
                       }
                       placeholder="••••••"
-                      className="h-14 w-full rounded-2xl border border-primary/15 bg-white text-center font-mono text-2xl font-bold tracking-[0.6em] text-primary outline-none placeholder:text-muted-foreground/40 focus:ring-2 focus:ring-primary/30"
+                      className={`h-14 w-full rounded-2xl border bg-white text-center font-mono text-2xl font-bold tracking-[0.6em] text-primary outline-none placeholder:text-muted-foreground/40 focus:ring-2 ${
+                        error
+                          ? "border-destructive/50 focus:ring-destructive/30"
+                          : "border-primary/15 focus:ring-primary/30"
+                      }`}
                     />
 
-                    <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-                      <ShieldCheck className="h-3 w-3 text-success" />
-                      Code expires in 5 minutes
-                    </p>
-
-                    {error && (
+                    {error ? (
                       <p className="text-center text-xs font-medium text-destructive">
                         {error}
+                      </p>
+                    ) : (
+                      <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+                        <ShieldCheck className="h-3 w-3 text-success" />
+                        Code expires in 5 minutes
                       </p>
                     )}
 
@@ -294,6 +376,9 @@ function LoginPage() {
                         onClick={() => {
                           reset();
                           setOtpInput("");
+                          setSentTo(null);
+                          setSecondsLeft(0);
+                          if (timerRef.current) clearInterval(timerRef.current);
                         }}
                         className="font-semibold text-muted-foreground hover:text-primary"
                       >
@@ -301,11 +386,11 @@ function LoginPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => sendOTP(cleanIdentifier(), mode)}
-                        disabled={loading}
-                        className="font-semibold text-accent hover:text-primary"
+                        onClick={handleResend}
+                        disabled={loading || secondsLeft > 0}
+                        className="font-semibold text-accent hover:text-primary disabled:cursor-not-allowed disabled:text-muted-foreground"
                       >
-                        Resend OTP
+                        {secondsLeft > 0 ? `Resend OTP in ${mmss}` : "Resend OTP"}
                       </button>
                     </div>
                   </motion.form>
