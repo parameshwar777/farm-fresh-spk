@@ -65,6 +65,15 @@ export function useOTP() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
+      // Set the Supabase session using tokens returned by the edge function
+      if (data?.access_token && data?.refresh_token) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        });
+        if (sessionError) throw sessionError;
+      }
+
       return {
         success: true,
         is_new_user: data?.is_new_user,
