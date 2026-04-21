@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 import { motion, type Variants } from "framer-motion";
 import { ArrowRight, Leaf, Sparkles, Truck } from "lucide-react";
 import { supabase, type Category, type Product } from "@/integrations/supabase/client";
+import { useCachedQuery } from "@/hooks/useSupabaseCache";
 import { SpkLogo } from "@/components/SpkLogo";
 import { TopBar } from "@/components/TopBar";
 import { BottomNav } from "@/components/BottomNav";
@@ -11,6 +11,25 @@ import { Skeleton } from "@/components/ui/skeleton";
 export const Route = createFileRoute("/")({
   component: HomePage,
 });
+
+async function fetchHomeCategories(): Promise<Category[]> {
+  const { data } = await supabase
+    .from("categories")
+    .select("*")
+    .eq("is_active", true)
+    .order("display_order");
+  return (data as Category[] | null) ?? [];
+}
+
+async function fetchHomeFeatured(): Promise<Product[]> {
+  const { data } = await supabase
+    .from("products")
+    .select("*")
+    .eq("is_available", true)
+    .eq("is_featured", true)
+    .limit(8);
+  return (data as Product[] | null) ?? [];
+}
 
 const stagger: Variants = {
   hidden: {},
@@ -23,30 +42,15 @@ const fadeUp: Variants = {
 };
 
 function HomePage() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [featured, setFeatured] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      const [{ data: cats }, { data: prods }] = await Promise.all([
-        supabase
-          .from("categories")
-          .select("*")
-          .eq("is_active", true)
-          .order("display_order"),
-        supabase
-          .from("products")
-          .select("*")
-          .eq("is_available", true)
-          .eq("is_featured", true)
-          .limit(8),
-      ]);
-      setCategories((cats as Category[] | null) ?? []);
-      setFeatured((prods as Product[] | null) ?? []);
-      setLoading(false);
-    })();
-  }, []);
+  const { data: categoriesData, loading: catLoading } = useCachedQuery(
+    "home:categories",
+    fetchHomeCategories,
+  );
+  const { data: featuredData } = useCachedQuery("home:featured", fetchHomeFeatured);
+  const categories = categoriesData ?? [];
+  const featured = featuredData ?? [];
+  // Only show skeletons on the very first cold load.
+  const loading = catLoading && categories.length === 0;
 
   return (
     <div className="min-h-[100dvh] pb-28">
