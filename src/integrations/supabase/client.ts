@@ -42,6 +42,7 @@ export type Product = {
   category_id: string;
   image_url: string | null;
   emoji: string;
+  use_real_image: boolean;
   harvest_date: string | null;
   farming_method: string;
   is_available: boolean;
