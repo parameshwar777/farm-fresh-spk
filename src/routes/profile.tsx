@@ -101,6 +101,14 @@ function ProfilePage() {
               Open Admin Panel
             </Link>
           )}
+          {profile?.role === "merchant" && (
+            <Link
+              to="/merchant"
+              className="mt-3 rounded-full bg-accent px-4 py-1.5 text-xs font-bold text-accent-foreground"
+            >
+              Open Merchant Panel
+            </Link>
+          )}
         </div>
 
         <ul className="mt-4 space-y-2">

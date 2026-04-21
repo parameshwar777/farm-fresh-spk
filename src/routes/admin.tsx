@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation, redirect, createFileRoute } from "@tanstack/react-router";
-import { LayoutDashboard, Package, ShoppingBag, Clock, Image, Settings as SettingsIcon, Folder } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, Clock, Image, Settings as SettingsIcon, Folder, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/admin")({
@@ -25,15 +25,16 @@ export const Route = createFileRoute("/admin")({
 function AdminLayout() {
   const location = useLocation();
   const navItems: Array<{
-    to: "/admin" | "/admin/products" | "/admin/categories" | "/admin/orders" | "/admin/slots" | "/admin/banners" | "/admin/settings";
+    to: "/admin" | "/admin/products" | "/admin/categories" | "/admin/orders" | "/admin/slots" | "/admin/banners" | "/admin/settings" | "/admin/users";
     icon: typeof LayoutDashboard;
     label: string;
     exact?: boolean;
   }> = [
-    { to: "/admin", icon: LayoutDashboard, label: "Dashboard", exact: true },
+    { to: "/admin", icon: LayoutDashboard, label: "Home", exact: true },
     { to: "/admin/products", icon: Package, label: "Products" },
-    { to: "/admin/categories", icon: Folder, label: "Categories" },
+    { to: "/admin/categories", icon: Folder, label: "Categs" },
     { to: "/admin/orders", icon: ShoppingBag, label: "Orders" },
+    { to: "/admin/users", icon: Users, label: "Users" },
     { to: "/admin/slots", icon: Clock, label: "Slots" },
     { to: "/admin/banners", icon: Image, label: "Banners" },
     { to: "/admin/settings", icon: SettingsIcon, label: "Settings" },
