@@ -7,12 +7,17 @@ export function BottomNav() {
   const location = useLocation();
   const count = useCart((s) => s.totalItems());
 
-  const items = [
+  const items: Array<{
+    to: "/" | "/shop" | "/cart" | "/profile";
+    icon: typeof Home;
+    label: string;
+    badge?: number;
+  }> = [
     { to: "/", icon: Home, label: "Home" },
     { to: "/shop", icon: ShoppingBag, label: "Shop" },
     { to: "/cart", icon: ShoppingCart, label: "Cart", badge: count },
     { to: "/profile", icon: User, label: "Profile" },
-  ] as const;
+  ];
 
   return (
     <nav
