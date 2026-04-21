@@ -2,9 +2,21 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Mail, Phone, ShieldCheck, Sparkles, Check } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Mail,
+  Phone,
+  ShieldCheck,
+  Sparkles,
+  Check,
+  Eye,
+  EyeOff,
+  Lock,
+} from "lucide-react";
 import { SpkLogo } from "@/components/SpkLogo";
-import { useOTP, type OTPType } from "@/hooks/useOTP";
+import { useOTP } from "@/hooks/useOTP";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -12,34 +24,33 @@ export const Route = createFileRoute("/login")({
 
 const RESEND_SECONDS = 60;
 
-function maskPhone(phoneDigits: string) {
-  // last 4 digits
-  const last4 = phoneDigits.slice(-4);
-  return `XXXXXX${last4}`;
-}
-
-function maskEmail(email: string) {
-  const [user, domain] = email.split("@");
-  if (!user || !domain) return email;
-  const visible = user.slice(0, 2);
-  return `${visible}${"*".repeat(Math.max(1, user.length - 2))}@${domain}`;
-}
+type Mode = "phone" | "email";
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<OTPType>("phone");
-  const [identifier, setIdentifier] = useState("");
-  const [otpInput, setOtpInput] = useState("");
+  const [mode, setMode] = useState<Mode>("phone");
+
+  // ====== Shared name-collection state (new phone users) ======
   const [needsName, setNeedsName] = useState(false);
   const [fullName, setFullName] = useState("");
-  const [sentTo, setSentTo] = useState<string | null>(null);
+
+  // ====== Phone OTP state ======
+  const [phone, setPhone] = useState("");
+  const [otpInput, setOtpInput] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [showSentCheck, setShowSentCheck] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const { sendOTP, verifyOTP, loading, error, otpSent, reset } = useOTP();
+  const { sendOTP, verifyOTP, loading: otpLoading, error: otpError, otpSent, reset: resetOTP } =
+    useOTP();
 
-  const cleanIdentifier = () =>
-    mode === "phone" ? `+91${identifier.replace(/\D/g, "")}` : identifier.trim();
+  // ====== Email + password state ======
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  const cleanPhone = () => `+91${phone.replace(/\D/g, "")}`;
 
   const startTimer = () => {
     setSecondsLeft(RESEND_SECONDS);
@@ -61,32 +72,24 @@ function LoginPage() {
     };
   }, []);
 
-  const handleSend = async (e: React.FormEvent) => {
+  // ===== Phone handlers =====
+  const handleSendPhoneOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === "phone" && identifier.replace(/\D/g, "").length < 10) {
+    if (phone.replace(/\D/g, "").length < 10) {
       toast.error("Enter a valid 10-digit mobile number");
       return;
     }
-    if (mode === "email" && !identifier.includes("@")) {
-      toast.error("Enter a valid email address");
-      return;
-    }
-    const result = await sendOTP(cleanIdentifier(), mode);
+    const result = await sendOTP(cleanPhone(), "phone");
     if (result.success) {
-      const masked =
-        mode === "phone"
-          ? `mobile number ending in ${identifier.replace(/\D/g, "").slice(-4)}`
-          : maskEmail(identifier.trim());
-      setSentTo(masked);
       setShowSentCheck(true);
       setTimeout(() => setShowSentCheck(false), 1800);
       startTimer();
     }
   };
 
-  const handleResend = async () => {
-    if (secondsLeft > 0 || loading) return;
-    const result = await sendOTP(cleanIdentifier(), mode);
+  const handleResendPhone = async () => {
+    if (secondsLeft > 0 || otpLoading) return;
+    const result = await sendOTP(cleanPhone(), "phone");
     if (result.success) {
       setShowSentCheck(true);
       setTimeout(() => setShowSentCheck(false), 1800);
@@ -95,12 +98,10 @@ function LoginPage() {
     }
   };
 
-  const handleVerify = async (e: React.FormEvent) => {
+  const handleVerifyPhone = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpInput.length !== 6) {
-      return;
-    }
-    const result = await verifyOTP(cleanIdentifier(), mode, otpInput);
+    if (otpInput.length !== 6) return;
+    const result = await verifyOTP(cleanPhone(), "phone", otpInput);
     if (result.success) {
       if (result.is_new_user) {
         setNeedsName(true);
@@ -120,32 +121,80 @@ function LoginPage() {
       toast.error("Please enter your name");
       return;
     }
+    // Save to profile
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("profiles").update({ full_name: fullName.trim() }).eq("id", user.id);
+    }
     toast.success(`Welcome, ${fullName.split(" ")[0]}!`);
     navigate({ to: "/" });
   };
 
-  const switchMode = (m: OTPType) => {
+  // ===== Email + password handler =====
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailError(null);
+    if (!email.includes("@")) {
+      setEmailError("Enter a valid email address");
+      return;
+    }
+    if (password.length < 6) {
+      setEmailError("Password must be at least 6 characters");
+      return;
+    }
+    setEmailLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) {
+        setEmailError(error.message);
+        return;
+      }
+      if (data.user) {
+        // Fetch role
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", data.user.id)
+          .maybeSingle();
+        if (profile?.role === "admin") {
+          toast.success("Welcome back, admin");
+          navigate({ to: "/admin" });
+        } else {
+          toast.success("Welcome back!");
+          navigate({ to: "/" });
+        }
+      }
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const switchMode = (m: Mode) => {
     if (m === mode) return;
     setMode(m);
-    setIdentifier("");
     setOtpInput("");
-    setSentTo(null);
     setSecondsLeft(0);
+    setEmailError(null);
     if (timerRef.current) clearInterval(timerRef.current);
-    reset();
+    resetOTP();
   };
 
   const mmss = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")}`;
+  const sentTo = `mobile number ending in ${phone.replace(/\D/g, "").slice(-4)}`;
 
   return (
     <div
-      className="safe-top safe-bottom relative flex min-h-[100dvh] flex-col items-center justify-start px-6 pt-10 pb-10 overflow-hidden"
+      className="safe-top safe-bottom relative flex min-h-[100dvh] flex-col items-center justify-start overflow-hidden px-6 pt-10 pb-10"
       style={{
         background:
           "radial-gradient(circle at 20% 0%, oklch(0.92 0.16 90 / 0.55), transparent 55%), radial-gradient(circle at 100% 30%, oklch(0.78 0.14 55 / 0.35), transparent 55%), linear-gradient(180deg, oklch(0.96 0.04 95) 0%, oklch(0.985 0.01 95) 100%)",
       }}
     >
-      {/* Back link */}
       <Link
         to="/"
         className="absolute left-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-primary shadow-sm ring-1 ring-primary/10 backdrop-blur"
@@ -153,7 +202,6 @@ function LoginPage() {
         <ArrowLeft className="h-4 w-4" />
       </Link>
 
-      {/* Decorative leaves */}
       <motion.div
         aria-hidden
         className="pointer-events-none absolute -top-2 right-2 text-4xl opacity-30"
@@ -192,14 +240,13 @@ function LoginPage() {
             <span className="shimmer-text">SPK Natural Farming</span>
           </h1>
           <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-white/70 px-2.5 py-0.5 backdrop-blur">
-            <Sparkles className="h-3 w-3 text-secondary fill-secondary" />
-            <span className="text-[10px] font-semibold tracking-wide text-primary uppercase">
+            <Sparkles className="h-3 w-3 fill-secondary text-secondary" />
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-primary">
               Fresh From Farm
             </span>
           </div>
         </div>
 
-        {/* Card */}
         <motion.div
           layout
           transition={{ layout: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } }}
@@ -208,16 +255,18 @@ function LoginPage() {
           {!needsName && (
             <>
               <h2 className="mb-1 font-display text-lg font-bold text-primary">
-                {otpSent ? "Verify OTP" : "Sign in / Sign up"}
+                {mode === "phone" && otpSent ? "Verify OTP" : "Sign in"}
               </h2>
               <p className="mb-4 text-xs text-muted-foreground">
-                {otpSent
-                  ? `Enter the 6-digit code we sent you`
-                  : "Get a one-time code on your phone or email"}
+                {mode === "phone"
+                  ? otpSent
+                    ? "Enter the 6-digit code we sent you"
+                    : "Get a one-time code on your phone"
+                  : "Use your email and password"}
               </p>
 
               {/* Mode toggle */}
-              {!otpSent && (
+              {!(mode === "phone" && otpSent) && (
                 <div className="mb-4 flex rounded-full bg-muted p-1">
                   {(
                     [
@@ -248,10 +297,11 @@ function LoginPage() {
               )}
 
               <AnimatePresence mode="wait" initial={false}>
-                {!otpSent ? (
+                {/* ===== PHONE: send OTP ===== */}
+                {mode === "phone" && !otpSent && (
                   <motion.form
-                    key="send"
-                    onSubmit={handleSend}
+                    key="phone-send"
+                    onSubmit={handleSendPhoneOTP}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
@@ -259,54 +309,52 @@ function LoginPage() {
                     className="space-y-3"
                   >
                     <label className="block text-xs font-semibold text-primary">
-                      {mode === "phone" ? "Mobile number" : "Email address"}
+                      Mobile number
                     </label>
                     <div className="flex items-center overflow-hidden rounded-2xl border border-primary/15 bg-white focus-within:ring-2 focus-within:ring-primary/30">
-                      {mode === "phone" && (
-                        <div className="flex h-12 items-center border-r border-primary/10 bg-muted/60 px-3 text-sm font-semibold text-primary">
-                          +91
-                        </div>
-                      )}
+                      <div className="flex h-12 items-center border-r border-primary/10 bg-muted/60 px-3 text-sm font-semibold text-primary">
+                        +91
+                      </div>
                       <input
-                        type={mode === "phone" ? "tel" : "email"}
-                        inputMode={mode === "phone" ? "numeric" : "email"}
-                        value={identifier}
-                        onChange={(e) => setIdentifier(e.target.value)}
-                        placeholder={
-                          mode === "phone" ? "9876543210" : "you@example.com"
-                        }
-                        autoComplete={mode === "phone" ? "tel" : "email"}
+                        type="tel"
+                        inputMode="numeric"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="9876543210"
+                        autoComplete="tel"
                         className="h-12 w-full bg-transparent px-3 text-base outline-none placeholder:text-muted-foreground"
                       />
                     </div>
 
-                    {error && (
-                      <p className="text-xs font-medium text-destructive">{error}</p>
+                    {otpError && (
+                      <p className="text-xs font-medium text-destructive">{otpError}</p>
                     )}
 
                     <motion.button
                       type="submit"
-                      disabled={loading}
+                      disabled={otpLoading}
                       whileTap={{ scale: 0.97 }}
                       className="group flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-lg shadow-primary/30 disabled:opacity-60"
                     >
-                      {loading ? "Sending OTP…" : "Send OTP"}
-                      {!loading && (
+                      {otpLoading ? "Sending OTP…" : "Send OTP"}
+                      {!otpLoading && (
                         <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                       )}
                     </motion.button>
                   </motion.form>
-                ) : (
+                )}
+
+                {/* ===== PHONE: verify OTP ===== */}
+                {mode === "phone" && otpSent && (
                   <motion.form
-                    key="verify"
-                    onSubmit={handleVerify}
+                    key="phone-verify"
+                    onSubmit={handleVerifyPhone}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.25 }}
                     className="space-y-3"
                   >
-                    {/* Sent confirmation */}
                     <motion.div
                       initial={{ opacity: 0, y: -6 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -344,15 +392,15 @@ function LoginPage() {
                       }
                       placeholder="••••••"
                       className={`h-14 w-full rounded-2xl border bg-white text-center font-mono text-2xl font-bold tracking-[0.6em] text-primary outline-none placeholder:text-muted-foreground/40 focus:ring-2 ${
-                        error
+                        otpError
                           ? "border-destructive/50 focus:ring-destructive/30"
                           : "border-primary/15 focus:ring-primary/30"
                       }`}
                     />
 
-                    {error ? (
+                    {otpError ? (
                       <p className="text-center text-xs font-medium text-destructive">
-                        {error}
+                        {otpError}
                       </p>
                     ) : (
                       <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
@@ -363,36 +411,122 @@ function LoginPage() {
 
                     <motion.button
                       type="submit"
-                      disabled={loading || otpInput.length !== 6}
+                      disabled={otpLoading || otpInput.length !== 6}
                       whileTap={{ scale: 0.97 }}
                       className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-lg shadow-primary/30 disabled:opacity-60"
                     >
-                      {loading ? "Verifying…" : "Verify & Continue"}
+                      {otpLoading ? "Verifying…" : "Verify & Continue"}
                     </motion.button>
 
                     <div className="flex items-center justify-between pt-1 text-xs">
                       <button
                         type="button"
                         onClick={() => {
-                          reset();
+                          resetOTP();
                           setOtpInput("");
-                          setSentTo(null);
                           setSecondsLeft(0);
                           if (timerRef.current) clearInterval(timerRef.current);
                         }}
                         className="font-semibold text-muted-foreground hover:text-primary"
                       >
-                        ← Change {mode === "phone" ? "number" : "email"}
+                        ← Change number
                       </button>
                       <button
                         type="button"
-                        onClick={handleResend}
-                        disabled={loading || secondsLeft > 0}
+                        onClick={handleResendPhone}
+                        disabled={otpLoading || secondsLeft > 0}
                         className="font-semibold text-accent hover:text-primary disabled:cursor-not-allowed disabled:text-muted-foreground"
                       >
                         {secondsLeft > 0 ? `Resend OTP in ${mmss}` : "Resend OTP"}
                       </button>
                     </div>
+                  </motion.form>
+                )}
+
+                {/* ===== EMAIL + PASSWORD ===== */}
+                {mode === "email" && (
+                  <motion.form
+                    key="email-login"
+                    onSubmit={handleEmailLogin}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.25 }}
+                    className="space-y-3"
+                  >
+                    <label className="block text-xs font-semibold text-primary">
+                      Email address
+                    </label>
+                    <div className="flex items-center overflow-hidden rounded-2xl border border-primary/15 bg-white focus-within:ring-2 focus-within:ring-primary/30">
+                      <div className="flex h-12 items-center border-r border-primary/10 bg-muted/60 px-3 text-primary">
+                        <Mail className="h-4 w-4" />
+                      </div>
+                      <input
+                        type="email"
+                        inputMode="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        autoComplete="email"
+                        className="h-12 w-full bg-transparent px-3 text-base outline-none placeholder:text-muted-foreground"
+                      />
+                    </div>
+
+                    <label className="block text-xs font-semibold text-primary">
+                      Password
+                    </label>
+                    <div className="flex items-center overflow-hidden rounded-2xl border border-primary/15 bg-white focus-within:ring-2 focus-within:ring-primary/30">
+                      <div className="flex h-12 items-center border-r border-primary/10 bg-muted/60 px-3 text-primary">
+                        <Lock className="h-4 w-4" />
+                      </div>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        autoComplete="current-password"
+                        className="h-12 w-full bg-transparent px-3 text-base outline-none placeholder:text-muted-foreground"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="flex h-12 items-center px-3 text-muted-foreground hover:text-primary"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+
+                    {emailError && (
+                      <p className="text-xs font-medium text-destructive">{emailError}</p>
+                    )}
+
+                    <div className="flex justify-end">
+                      <Link
+                        to="/forgot-password"
+                        className="text-xs font-semibold text-accent hover:text-primary"
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
+
+                    <motion.button
+                      type="submit"
+                      disabled={emailLoading}
+                      whileTap={{ scale: 0.97 }}
+                      className="group flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-lg shadow-primary/30 disabled:opacity-60"
+                    >
+                      {emailLoading ? "Signing in…" : "Sign in"}
+                      {!emailLoading && (
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      )}
+                    </motion.button>
+
+                    <p className="pt-1 text-center text-xs text-muted-foreground">
+                      Don't have an account?{" "}
+                      <Link to="/signup" className="font-semibold text-primary hover:underline">
+                        Sign up
+                      </Link>
+                    </p>
                   </motion.form>
                 )}
               </AnimatePresence>
@@ -432,10 +566,6 @@ function LoginPage() {
             </motion.form>
           )}
         </motion.div>
-
-        <p className="mt-5 text-center text-[11px] text-muted-foreground">
-          By continuing you agree to our Terms & Privacy Policy
-        </p>
       </motion.div>
     </div>
   );

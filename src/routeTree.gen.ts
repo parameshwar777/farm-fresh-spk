@@ -9,10 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ShopRouteImport } from './routes/shop'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AddressesRouteImport } from './routes/addresses'
@@ -29,9 +32,19 @@ import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminBannersRouteImport } from './routes/admin.banners'
 
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShopRoute = ShopRouteImport.update({
   id: '/shop',
   path: '/shop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -47,6 +60,11 @@ const OrdersRoute = OrdersRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CartRoute = CartRouteImport.update({
@@ -130,10 +148,13 @@ export interface FileRoutesByFullPath {
   '/addresses': typeof AddressesRoute
   '/admin': typeof AdminRouteWithChildren
   '/cart': typeof CartRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRouteWithChildren
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/shop': typeof ShopRoute
+  '/signup': typeof SignupRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -150,10 +171,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/addresses': typeof AddressesRoute
   '/cart': typeof CartRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRouteWithChildren
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/shop': typeof ShopRoute
+  '/signup': typeof SignupRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -172,10 +196,13 @@ export interface FileRoutesById {
   '/addresses': typeof AddressesRoute
   '/admin': typeof AdminRouteWithChildren
   '/cart': typeof CartRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRouteWithChildren
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/shop': typeof ShopRoute
+  '/signup': typeof SignupRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -195,10 +222,13 @@ export interface FileRouteTypes {
     | '/addresses'
     | '/admin'
     | '/cart'
+    | '/forgot-password'
     | '/login'
     | '/orders'
     | '/profile'
+    | '/reset-password'
     | '/shop'
+    | '/signup'
     | '/admin/banners'
     | '/admin/categories'
     | '/admin/orders'
@@ -215,10 +245,13 @@ export interface FileRouteTypes {
     | '/'
     | '/addresses'
     | '/cart'
+    | '/forgot-password'
     | '/login'
     | '/orders'
     | '/profile'
+    | '/reset-password'
     | '/shop'
+    | '/signup'
     | '/admin/banners'
     | '/admin/categories'
     | '/admin/orders'
@@ -236,10 +269,13 @@ export interface FileRouteTypes {
     | '/addresses'
     | '/admin'
     | '/cart'
+    | '/forgot-password'
     | '/login'
     | '/orders'
     | '/profile'
+    | '/reset-password'
     | '/shop'
+    | '/signup'
     | '/admin/banners'
     | '/admin/categories'
     | '/admin/orders'
@@ -258,10 +294,13 @@ export interface RootRouteChildren {
   AddressesRoute: typeof AddressesRoute
   AdminRoute: typeof AdminRouteWithChildren
   CartRoute: typeof CartRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   OrdersRoute: typeof OrdersRouteWithChildren
   ProfileRoute: typeof ProfileRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ShopRoute: typeof ShopRoute
+  SignupRoute: typeof SignupRoute
   CategoryCategoryIdRoute: typeof CategoryCategoryIdRoute
   OrderSuccessOrderIdRoute: typeof OrderSuccessOrderIdRoute
   ProductProductIdRoute: typeof ProductProductIdRoute
@@ -269,11 +308,25 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/shop': {
       id: '/shop'
       path: '/shop'
       fullPath: '/shop'
       preLoaderRoute: typeof ShopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -295,6 +348,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cart': {
@@ -443,10 +503,13 @@ const rootRouteChildren: RootRouteChildren = {
   AddressesRoute: AddressesRoute,
   AdminRoute: AdminRouteWithChildren,
   CartRoute: CartRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   OrdersRoute: OrdersRouteWithChildren,
   ProfileRoute: ProfileRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ShopRoute: ShopRoute,
+  SignupRoute: SignupRoute,
   CategoryCategoryIdRoute: CategoryCategoryIdRoute,
   OrderSuccessOrderIdRoute: OrderSuccessOrderIdRoute,
   ProductProductIdRoute: ProductProductIdRoute,
