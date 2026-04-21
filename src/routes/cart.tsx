@@ -8,12 +8,48 @@ import {
   type Address,
   type DeliverySlot,
 } from "@/integrations/supabase/client";
+import {
+  createRazorpayOrder,
+  verifyRazorpayPayment,
+} from "@/integrations/razorpay/payments.functions";
 import { useCart } from "@/store/cart";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => {
+      open: () => void;
+      on: (event: string, cb: (data: unknown) => void) => void;
+    };
+  }
+}
+
+const RAZORPAY_SCRIPT = "https://checkout.razorpay.com/v1/checkout.js";
+
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") return resolve(false);
+    if (window.Razorpay) return resolve(true);
+    const existing = document.querySelector<HTMLScriptElement>(
+      `script[src="${RAZORPAY_SCRIPT}"]`,
+    );
+    if (existing) {
+      existing.addEventListener("load", () => resolve(true));
+      existing.addEventListener("error", () => resolve(false));
+      return;
+    }
+    const s = document.createElement("script");
+    s.src = RAZORPAY_SCRIPT;
+    s.async = true;
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.body.appendChild(s);
+  });
+}
 
 export const Route = createFileRoute("/cart")({
   component: CartPage,
@@ -27,7 +63,7 @@ function CartPage() {
   const [slots, setSlots] = useState<DeliverySlot[]>([]);
   const [addressId, setAddressId] = useState<string>("");
   const [slotId, setSlotId] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<"cod" | "upi">("cod");
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "online">("cod");
   const [deliveryCharge, setDeliveryCharge] = useState(20);
   const [freeDeliveryAbove, setFreeDeliveryAbove] = useState(500);
   const [submitting, setSubmitting] = useState(false);
@@ -104,6 +140,68 @@ function CartPage() {
     toast.success("Address saved");
   };
 
+  const startRazorpayCheckout = async (orderId: string) => {
+    const ok = await loadRazorpayScript();
+    if (!ok || !window.Razorpay) {
+      toast.error("Could not load payment SDK. Check your connection.");
+      return false;
+    }
+    let rzpData: Awaited<ReturnType<typeof createRazorpayOrder>>;
+    try {
+      rzpData = await createRazorpayOrder({ data: { orderId } });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not start payment";
+      toast.error(msg);
+      return false;
+    }
+
+    return new Promise<boolean>((resolve) => {
+      const rzp = new window.Razorpay!({
+        key: rzpData.keyId,
+        amount: rzpData.amount,
+        currency: rzpData.currency,
+        order_id: rzpData.razorpayOrderId,
+        name: "SPK Farm Fresh",
+        description: `Order #${orderId.slice(0, 8)}`,
+        prefill: {
+          name: user?.user_metadata?.full_name ?? "",
+          email: user?.email ?? "",
+          contact: user?.phone ?? "",
+        },
+        theme: { color: "#16a34a" },
+        handler: async (resp: unknown) => {
+          const r = resp as {
+            razorpay_payment_id: string;
+            razorpay_order_id: string;
+            razorpay_signature: string;
+          };
+          try {
+            await verifyRazorpayPayment({
+              data: {
+                orderId,
+                razorpay_order_id: r.razorpay_order_id,
+                razorpay_payment_id: r.razorpay_payment_id,
+                razorpay_signature: r.razorpay_signature,
+              },
+            });
+            resolve(true);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : "Payment verification failed";
+            toast.error(msg);
+            resolve(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            toast.error("Payment cancelled. Your order is awaiting payment.");
+            resolve(false);
+          },
+        },
+      });
+      rzp.open();
+    });
+  };
+
   const placeOrder = async () => {
     if (!user) {
       navigate({ to: "/login" });
@@ -140,6 +238,15 @@ function CartPage() {
       }));
       const { error: itemsErr } = await supabase.from("order_items").insert(orderItems);
       if (itemsErr) throw itemsErr;
+
+      if (paymentMethod === "online") {
+        const paid = await startRazorpayCheckout(order.id);
+        if (!paid) {
+          // Order is saved as pending — user can retry from Orders page.
+          navigate({ to: "/orders/$orderId", params: { orderId: order.id } });
+          return;
+        }
+      }
 
       clear();
       navigate({ to: "/order-success/$orderId", params: { orderId: order.id } });
@@ -355,15 +462,17 @@ function CartPage() {
               <h2 className="mb-2 font-display font-bold text-primary">Payment</h2>
               <RadioGroup
                 value={paymentMethod}
-                onValueChange={(v) => setPaymentMethod(v as "cod" | "upi")}
+                onValueChange={(v) => setPaymentMethod(v as "cod" | "online")}
               >
                 <label className="flex cursor-pointer items-center gap-2 rounded-lg p-2 hover:bg-background">
                   <RadioGroupItem value="cod" />
                   <span className="text-sm font-semibold text-primary">💵 Cash on Delivery</span>
                 </label>
                 <label className="flex cursor-pointer items-center gap-2 rounded-lg p-2 hover:bg-background">
-                  <RadioGroupItem value="upi" />
-                  <span className="text-sm font-semibold text-primary">📱 UPI</span>
+                  <RadioGroupItem value="online" />
+                  <span className="text-sm font-semibold text-primary">
+                    📱 UPI / Card / Net Banking
+                  </span>
                 </label>
               </RadioGroup>
             </section>
