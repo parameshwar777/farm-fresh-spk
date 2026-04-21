@@ -235,12 +235,14 @@ function HomePage() {
               <rect x="238" y="103" width="4" height="14" />
             </g>
           </svg>
-          <div className="relative flex h-full items-end p-4">
-            <div>
-              <p className="font-display text-lg font-bold text-primary text-shadow-sm">
+          <div className="relative flex h-full items-start p-4">
+            <div className="rounded-2xl bg-white/55 px-3 py-2 backdrop-blur-md ring-1 ring-primary/10 shadow-sm">
+              <p className="font-display text-lg font-bold text-primary leading-tight">
                 Today's Harvest
               </p>
-              <p className="text-xs text-primary/80">Hand-picked, naturally grown</p>
+              <p className="text-[11px] font-medium text-primary/85">
+                Hand-picked, naturally grown
+              </p>
             </div>
           </div>
         </div>
