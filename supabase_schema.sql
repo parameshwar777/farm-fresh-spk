@@ -34,7 +34,9 @@ exception when duplicate_object then null; end $$;
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text,
+  email text,
   phone text,
+  phone_number text,
   role app_role not null default 'customer',
   avatar_url text,
   created_at timestamptz not null default now()
@@ -150,13 +152,19 @@ returns trigger
 language plpgsql security definer set search_path = public
 as $$
 begin
-  insert into public.profiles (id, full_name, phone)
+  insert into public.profiles (id, full_name, email, phone, phone_number)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'full_name', ''),
-    coalesce(new.raw_user_meta_data->>'phone', '')
+    new.email,
+    coalesce(new.raw_user_meta_data->>'phone', new.phone, ''),
+    coalesce(new.raw_user_meta_data->>'phone', new.phone, '')
   )
-  on conflict (id) do nothing;
+  on conflict (id) do update
+    set full_name    = coalesce(excluded.full_name, public.profiles.full_name),
+        email        = coalesce(excluded.email, public.profiles.email),
+        phone        = coalesce(nullif(excluded.phone, ''), public.profiles.phone),
+        phone_number = coalesce(nullif(excluded.phone_number, ''), public.profiles.phone_number);
   return new;
 end;
 $$;
