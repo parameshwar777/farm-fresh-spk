@@ -54,6 +54,19 @@ type EnrichedOrder = Order & {
 function AdminOrders() {
   const [orders, setOrders] = useState<EnrichedOrder[]>([]);
   const [filter, setFilter] = useState<"all" | OrderStatus>("all");
+  const [adminWhatsApp, setAdminWhatsApp] = useState<string>(DEFAULT_ADMIN_WHATSAPP);
+
+  useEffect(() => {
+    supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "admin_whatsapp_number")
+      .maybeSingle()
+      .then(({ data }) => {
+        const v = (data as { value?: string } | null)?.value;
+        setAdminWhatsApp(normalizeWhatsAppNumber(v));
+      });
+  }, []);
 
   const load = async () => {
     const { data } = await supabase
@@ -126,7 +139,7 @@ function AdminOrders() {
     }
 
     const text = encodeURIComponent(lines.join("\n"));
-    const url = `https://wa.me/${ADMIN_WHATSAPP}?text=${text}`;
+    const url = `https://wa.me/${adminWhatsApp}?text=${text}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
