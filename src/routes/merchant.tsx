@@ -7,6 +7,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { supabase, type Order, type OrderItem, type Address, type Profile } from "@/integrations/supabase/client";
 import { signOut } from "@/hooks/useAuth";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export const Route = createFileRoute("/merchant")({
   beforeLoad: async () => {
@@ -179,6 +180,7 @@ function MerchantPortal() {
             <p className="text-[10px] text-accent-foreground/80">Delivery panel</p>
           </div>
           <div className="flex items-center gap-2">
+            <NotificationBell tone="accent" />
             <Link to="/" className="text-xs text-accent-foreground/80 underline">
               Customer
             </Link>

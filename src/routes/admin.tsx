@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation, redirect, createFileRoute } from "@tanstack/react-router";
 import { LayoutDashboard, Package, ShoppingBag, Clock, Image, Settings as SettingsIcon, Folder, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async () => {
@@ -45,9 +46,12 @@ function AdminLayout() {
       <header className="safe-top sticky top-0 z-30 border-b border-border bg-primary px-4 py-3">
         <div className="flex items-center justify-between">
           <h1 className="font-display text-lg font-bold text-primary-foreground">SPK Admin</h1>
-          <Link to="/" className="text-xs text-primary-foreground/80 underline">
-            Customer view
-          </Link>
+          <div className="flex items-center gap-2">
+            <NotificationBell tone="primary" />
+            <Link to="/" className="text-xs text-primary-foreground/80 underline">
+              Customer view
+            </Link>
+          </div>
         </div>
       </header>
 
