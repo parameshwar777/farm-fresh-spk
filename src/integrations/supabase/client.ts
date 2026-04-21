@@ -54,6 +54,8 @@ export type Address = {
   id: string;
   user_id: string;
   label: string;
+  receiver_name: string;
+  receiver_phone: string;
   full_address: string;
   city: string;
   pincode: string;
