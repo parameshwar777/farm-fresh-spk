@@ -6,6 +6,7 @@ export type OTPType = "phone" | "email";
 interface SendResult {
   success: boolean;
   error?: string;
+  dev_otp?: string;
 }
 
 interface VerifyResult {
@@ -20,6 +21,7 @@ export function useOTP() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [otpSent, setOtpSent] = useState(false);
+  const [lastDevOtp, setLastDevOtp] = useState<string | null>(null);
 
   const sendOTP = async (identifier: string, type: OTPType): Promise<SendResult> => {
     setLoading(true);
@@ -49,7 +51,8 @@ export function useOTP() {
       if (data?.success === false) throw new Error(data?.message || "Failed to send OTP");
 
       setOtpSent(true);
-      return { success: true };
+      setLastDevOtp(data?.dev_otp ?? null);
+      return { success: true, dev_otp: data?.dev_otp };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to send OTP";
       setError(msg);
@@ -113,7 +116,9 @@ export function useOTP() {
   const reset = () => {
     setOtpSent(false);
     setError(null);
+    setLastDevOtp(null);
   };
 
-  return { sendOTP, verifyOTP, loading, error, otpSent, reset };
+  return { sendOTP, verifyOTP, loading, error, otpSent, reset, lastDevOtp };
 }
+

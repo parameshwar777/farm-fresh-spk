@@ -40,7 +40,7 @@ function LoginPage() {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [showSentCheck, setShowSentCheck] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const { sendOTP, verifyOTP, loading: otpLoading, error: otpError, otpSent, reset: resetOTP } =
+  const { sendOTP, verifyOTP, loading: otpLoading, error: otpError, otpSent, reset: resetOTP, lastDevOtp } =
     useOTP();
 
   // ====== Email + password state ======
@@ -380,6 +380,17 @@ function LoginPage() {
                         OTP sent to {sentTo}
                       </p>
                     </motion.div>
+
+                    {lastDevOtp && (
+                      <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-center">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                          Dev mode — your OTP
+                        </p>
+                        <p className="font-mono text-lg font-bold tracking-[0.4em] text-amber-900">
+                          {lastDevOtp}
+                        </p>
+                      </div>
+                    )}
 
                     <input
                       type="text"
