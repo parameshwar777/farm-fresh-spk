@@ -17,7 +17,7 @@ function LoginPage() {
   const [otpInput, setOtpInput] = useState("");
   const [needsName, setNeedsName] = useState(false);
   const [fullName, setFullName] = useState("");
-  const { sendOTP, verifyOTP, loading, error, otpSent, devOTP, reset } = useOTP();
+  const { sendOTP, verifyOTP, loading, error, otpSent, reset } = useOTP();
 
   const cleanIdentifier = () =>
     mode === "phone" ? `+91${identifier.replace(/\D/g, "")}` : identifier.trim();
@@ -243,32 +243,17 @@ function LoginPage() {
                     transition={{ duration: 0.25 }}
                     className="space-y-3"
                   >
-                    {devOTP ? (
-                      <motion.div
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="rounded-xl border border-secondary/40 bg-secondary/15 px-3 py-2 text-center"
-                      >
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-primary/70">
-                          Dev mode OTP
-                        </p>
-                        <p className="font-mono text-lg font-bold tracking-[0.4em] text-primary">
-                          {devOTP}
-                        </p>
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-center"
-                      >
-                        <p className="text-[11px] font-medium text-primary/80">
-                          {mode === "phone"
-                            ? "Check your SMS for the 6-digit code"
-                            : "Check your email inbox (and spam) for the 6-digit code"}
-                        </p>
-                      </motion.div>
-                    )}
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-center"
+                    >
+                      <p className="text-[11px] font-medium text-primary/80">
+                        {mode === "phone"
+                          ? "Check your SMS for the 6-digit code"
+                          : "Check your email inbox (and spam) for the 6-digit code"}
+                      </p>
+                    </motion.div>
 
                     <input
                       type="text"

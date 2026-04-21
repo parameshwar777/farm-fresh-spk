@@ -19,7 +19,6 @@ export function useOTP() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [otpSent, setOtpSent] = useState(false);
-  const [devOTP, setDevOTP] = useState<string | null>(null);
 
   const sendOTP = async (identifier: string, type: OTPType): Promise<SendResult> => {
     setLoading(true);
@@ -33,14 +32,6 @@ export function useOTP() {
       if (data?.success === false) throw new Error(data?.message || "Failed to send OTP");
 
       setOtpSent(true);
-      // Edge function may return OTP in dev mode under any of these keys
-      const devCode: string | undefined =
-        data?.dev_otp ?? data?.otp ?? data?.code ?? data?.otp_code;
-      if (devCode) {
-        setDevOTP(String(devCode));
-        // eslint-disable-next-line no-console
-        console.log("🔑 DEV OTP:", devCode);
-      }
       return { success: true };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to send OTP";
@@ -91,8 +82,8 @@ export function useOTP() {
   const reset = () => {
     setOtpSent(false);
     setError(null);
-    setDevOTP(null);
   };
 
-  return { sendOTP, verifyOTP, loading, error, otpSent, devOTP, reset };
+  return { sendOTP, verifyOTP, loading, error, otpSent, reset };
 }
+

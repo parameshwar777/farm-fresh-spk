@@ -1,13 +1,11 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { Toaster } from "sonner";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { SplashScreen } from "@/components/SplashScreen";
 import { AuthGate } from "@/components/AuthGate";
 import { PageTransition } from "@/components/PageTransition";
 
 import appCss from "../styles.css?url";
-
-const SPLASH_KEY = "spk_splash_seen_v1";
 
 function NotFoundComponent() {
   return (
@@ -94,38 +92,18 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  const [showSplash, setShowSplash] = useState(false);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    try {
-      const seen = sessionStorage.getItem(SPLASH_KEY);
-      if (!seen) setShowSplash(true);
-    } catch {
-      // sessionStorage unavailable — skip splash
-    }
-    setReady(true);
-  }, []);
-
-  const finishSplash = () => {
-    try {
-      sessionStorage.setItem(SPLASH_KEY, "1");
-    } catch {
-      // ignore
-    }
-    setShowSplash(false);
-  };
+  // Splash plays on every app open (fresh page load)
+  const [showSplash, setShowSplash] = useState(true);
 
   return (
     <div className="mobile-frame">
-      {ready && showSplash && <SplashScreen onFinish={finishSplash} />}
-      {!showSplash && (
-        <AuthGate>
-          <PageTransition>
-            <Outlet />
-          </PageTransition>
-        </AuthGate>
-      )}
+      <AuthGate>
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
+      </AuthGate>
+      {/* Splash sits on top — covers any auth-redirect flicker underneath */}
+      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
       <Toaster position="top-center" richColors closeButton theme="light" />
     </div>
   );
