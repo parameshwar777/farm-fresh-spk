@@ -2,6 +2,8 @@ import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/r
 import { Toaster } from "sonner";
 import { useEffect, useState } from "react";
 import { SplashScreen } from "@/components/SplashScreen";
+import { AuthGate } from "@/components/AuthGate";
+import { PageTransition } from "@/components/PageTransition";
 
 import appCss from "../styles.css?url";
 
@@ -117,7 +119,13 @@ function RootComponent() {
   return (
     <div className="mobile-frame">
       {ready && showSplash && <SplashScreen onFinish={finishSplash} />}
-      <Outlet />
+      {!showSplash && (
+        <AuthGate>
+          <PageTransition>
+            <Outlet />
+          </PageTransition>
+        </AuthGate>
+      )}
       <Toaster position="top-center" richColors closeButton theme="light" />
     </div>
   );

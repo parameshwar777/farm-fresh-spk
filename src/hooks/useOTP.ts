@@ -30,12 +30,16 @@ export function useOTP() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      if (data?.success === false) throw new Error(data?.message || "Failed to send OTP");
 
       setOtpSent(true);
-      if (data?.dev_otp) {
-        setDevOTP(data.dev_otp);
+      // Edge function may return OTP in dev mode under any of these keys
+      const devCode: string | undefined =
+        data?.dev_otp ?? data?.otp ?? data?.code ?? data?.otp_code;
+      if (devCode) {
+        setDevOTP(String(devCode));
         // eslint-disable-next-line no-console
-        console.log("🔑 DEV OTP:", data.dev_otp);
+        console.log("🔑 DEV OTP:", devCode);
       }
       return { success: true };
     } catch (err) {
