@@ -34,8 +34,16 @@ const STATUSES: OrderStatus[] = [
   "cancelled",
 ];
 
-// Admin's WhatsApp number — change here if needed
-const ADMIN_WHATSAPP = "919440229378"; // 91 = India country code
+// Default fallback used if admin hasn't configured a number in settings
+const DEFAULT_ADMIN_WHATSAPP = "919440229378"; // 91 = India country code
+
+function normalizeWhatsAppNumber(raw: string | undefined | null): string {
+  const digits = (raw ?? "").replace(/\D/g, "");
+  if (!digits) return DEFAULT_ADMIN_WHATSAPP;
+  // If user entered a 10-digit Indian number, prepend 91
+  if (digits.length === 10) return `91${digits}`;
+  return digits;
+}
 
 type EnrichedOrder = Order & {
   items: (OrderItem & { product?: Pick<Product, "name" | "emoji" | "unit"> })[];
@@ -46,6 +54,19 @@ type EnrichedOrder = Order & {
 function AdminOrders() {
   const [orders, setOrders] = useState<EnrichedOrder[]>([]);
   const [filter, setFilter] = useState<"all" | OrderStatus>("all");
+  const [adminWhatsApp, setAdminWhatsApp] = useState<string>(DEFAULT_ADMIN_WHATSAPP);
+
+  useEffect(() => {
+    supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "admin_whatsapp_number")
+      .maybeSingle()
+      .then(({ data }) => {
+        const v = (data as { value?: string } | null)?.value;
+        setAdminWhatsApp(normalizeWhatsAppNumber(v));
+      });
+  }, []);
 
   const load = async () => {
     const { data } = await supabase
@@ -118,7 +139,7 @@ function AdminOrders() {
     }
 
     const text = encodeURIComponent(lines.join("\n"));
-    const url = `https://wa.me/${ADMIN_WHATSAPP}?text=${text}`;
+    const url = `https://wa.me/${adminWhatsApp}?text=${text}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 

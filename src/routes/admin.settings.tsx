@@ -84,6 +84,23 @@ function AdminSettings() {
             onChange={(e) => update("store_message", e.target.value)}
           />
         </div>
+        <div>
+          <Label>Admin WhatsApp Number</Label>
+          <Input
+            type="tel"
+            inputMode="tel"
+            placeholder="9440229378"
+            maxLength={15}
+            value={settings.admin_whatsapp_number ?? ""}
+            onChange={(e) =>
+              update("admin_whatsapp_number", e.target.value.replace(/\D/g, "").slice(0, 15))
+            }
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Used by the WhatsApp button in Orders. Digits only — include country code or
+            we'll prepend 91 (India) automatically.
+          </p>
+        </div>
 
         <Button
           onClick={save}
