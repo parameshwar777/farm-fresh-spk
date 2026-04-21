@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { supabase, type Category, type Product } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/store/cart";
+import { ProductImage } from "@/components/ProductImage";
 
 export const Route = createFileRoute("/category/$categoryId")({
   component: CategoryPage,
@@ -110,9 +111,13 @@ function CategoryPage() {
                     <button
                       onClick={() => toggle(p.id)}
                       aria-label={`Select ${p.name}`}
-                      className="flex h-14 w-14 items-center justify-center rounded-full bg-background text-3xl"
+                      className="shrink-0"
                     >
-                      {p.emoji}
+                      <ProductImage
+                        product={p}
+                        className="h-14 w-14 bg-background"
+                        emojiClassName="text-3xl"
+                      />
                     </button>
                     <Link
                       to="/product/$productId"

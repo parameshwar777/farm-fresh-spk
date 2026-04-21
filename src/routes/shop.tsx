@@ -5,6 +5,7 @@ import { useCachedQuery } from "@/hooks/useSupabaseCache";
 import { TopBar } from "@/components/TopBar";
 import { BottomNav } from "@/components/BottomNav";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ProductImage } from "@/components/ProductImage";
 
 export const Route = createFileRoute("/shop")({
   component: ShopPage,
@@ -99,9 +100,11 @@ function ProductRow({ product, index }: { product: Product; index: number }) {
         params={{ productId: product.id }}
         className="flex items-center gap-3 rounded-2xl bg-card p-3 shadow-sm"
       >
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-background text-3xl">
-          {product.emoji}
-        </div>
+        <ProductImage
+          product={product}
+          className="h-14 w-14 bg-background"
+          emojiClassName="text-3xl"
+        />
         <div className="flex-1">
           <p className="font-semibold text-primary">{product.name}</p>
           <span className="mt-0.5 inline-block rounded-full bg-spk-badge px-2 py-0.5 text-[10px] font-semibold text-spk-badge-fg">

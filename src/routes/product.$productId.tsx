@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase, type Product } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/store/cart";
+import { ProductImage } from "@/components/ProductImage";
 
 export const Route = createFileRoute("/product/$productId")({
   component: ProductDetailPage,
@@ -92,9 +93,18 @@ function ProductDetailPage() {
         <motion.div
           initial={{ scale: 0.85, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="mx-auto flex h-44 w-44 items-center justify-center rounded-full bg-card shadow-lg"
+          className="mx-auto"
         >
-          <span className="text-8xl">{product.emoji}</span>
+          <ProductImage
+            product={product}
+            className={
+              product.use_real_image && product.image_url
+                ? "mx-auto h-72 w-full max-w-sm bg-card shadow-lg"
+                : "mx-auto h-56 w-56 bg-card shadow-lg"
+            }
+            emojiClassName="text-9xl"
+            rounded={product.use_real_image && product.image_url ? "3xl" : "full"}
+          />
         </motion.div>
 
         <h2 className="mt-6 text-center font-display text-2xl font-bold text-primary">

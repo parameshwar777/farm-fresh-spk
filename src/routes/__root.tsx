@@ -5,6 +5,7 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { AuthGate } from "@/components/AuthGate";
 import { PageTransition } from "@/components/PageTransition";
 import { AuthProvider } from "@/hooks/useAuth";
+import { AppVersionGate } from "@/components/AppVersionGate";
 
 import appCss from "../styles.css?url";
 
@@ -99,11 +100,13 @@ function RootComponent() {
   return (
     <div className="mobile-frame">
       <AuthProvider>
-        <AuthGate>
-          <PageTransition>
-            <Outlet />
-          </PageTransition>
-        </AuthGate>
+        <AppVersionGate>
+          <AuthGate>
+            <PageTransition>
+              <Outlet />
+            </PageTransition>
+          </AuthGate>
+        </AppVersionGate>
       </AuthProvider>
       {/* Splash sits on top — covers any auth-redirect flicker underneath */}
       {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}

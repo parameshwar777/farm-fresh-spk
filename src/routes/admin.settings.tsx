@@ -93,6 +93,65 @@ function AdminSettings() {
           {saving ? "Saving…" : "Save Settings"}
         </Button>
       </div>
+
+      {/* App version controls */}
+      <div className="mt-4 space-y-3 rounded-2xl bg-card p-4">
+        <div>
+          <h3 className="font-display font-bold text-primary">App Version Control</h3>
+          <p className="text-xs text-muted-foreground">
+            Force users on older app builds to update before they can use the app.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Label>Current Version</Label>
+            <Input
+              placeholder="1.0.1"
+              value={settings.current_app_version ?? ""}
+              onChange={(e) => update("current_app_version", e.target.value)}
+            />
+          </div>
+          <div>
+            <Label>Minimum Required</Label>
+            <Input
+              placeholder="1.0.0"
+              value={settings.min_app_version ?? ""}
+              onChange={(e) => update("min_app_version", e.target.value)}
+            />
+          </div>
+        </div>
+        <div>
+          <Label>Update Message</Label>
+          <Textarea
+            placeholder="A new version is available. Please update to continue."
+            value={settings.app_update_message ?? ""}
+            onChange={(e) => update("app_update_message", e.target.value)}
+          />
+        </div>
+        <div>
+          <Label>Play Store URL (Android)</Label>
+          <Input
+            placeholder="https://play.google.com/store/apps/details?id=..."
+            value={settings.app_store_url_android ?? ""}
+            onChange={(e) => update("app_store_url_android", e.target.value)}
+          />
+        </div>
+        <div>
+          <Label>App Store URL (iOS)</Label>
+          <Input
+            placeholder="https://apps.apple.com/app/..."
+            value={settings.app_store_url_ios ?? ""}
+            onChange={(e) => update("app_store_url_ios", e.target.value)}
+          />
+        </div>
+        <Button
+          onClick={save}
+          disabled={saving}
+          className="w-full bg-primary text-primary-foreground"
+        >
+          {saving ? "Saving…" : "Save Version Settings"}
+        </Button>
+      </div>
     </div>
   );
 }
