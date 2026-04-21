@@ -1,6 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Package, IndianRupee, Clock, AlertTriangle } from "lucide-react";
+import {
+  Package,
+  IndianRupee,
+  Clock,
+  AlertTriangle,
+  ShoppingBag,
+  Folder,
+  Users,
+  Image as ImageIcon,
+  Settings as SettingsIcon,
+} from "lucide-react";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { supabase, type Order } from "@/integrations/supabase/client";
@@ -86,25 +96,15 @@ function AdminDashboard() {
         <StatCard icon={<AlertTriangle />} label="Low Stock" value={stats.lowStock} />
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <Link
-          to="/admin/products"
-          className="rounded-2xl bg-primary p-3 text-center text-xs font-bold text-primary-foreground"
-        >
-          + Product
-        </Link>
-        <Link
-          to="/admin/orders"
-          className="rounded-2xl bg-secondary p-3 text-center text-xs font-bold text-secondary-foreground"
-        >
-          📋 Orders
-        </Link>
-        <Link
-          to="/admin/slots"
-          className="rounded-2xl bg-accent p-3 text-center text-xs font-bold text-accent-foreground"
-        >
-          🕐 Slots
-        </Link>
+      <h3 className="mt-6 mb-3 font-display font-bold text-primary">Quick actions</h3>
+      <div className="grid grid-cols-3 gap-3">
+        <QuickTile to="/admin/orders" icon={<ShoppingBag className="h-5 w-5" />} label="Orders" />
+        <QuickTile to="/admin/products" icon={<Package className="h-5 w-5" />} label="Products" />
+        <QuickTile to="/admin/categories" icon={<Folder className="h-5 w-5" />} label="Categories" />
+        <QuickTile to="/admin/users" icon={<Users className="h-5 w-5" />} label="Users" />
+        <QuickTile to="/admin/slots" icon={<Clock className="h-5 w-5" />} label="Slots" />
+        <QuickTile to="/admin/banners" icon={<ImageIcon className="h-5 w-5" />} label="Banners" />
+        <QuickTile to="/admin/settings" icon={<SettingsIcon className="h-5 w-5" />} label="Settings" />
       </div>
 
       <h3 className="mt-6 mb-2 font-display font-bold text-primary">Recent Orders</h3>
