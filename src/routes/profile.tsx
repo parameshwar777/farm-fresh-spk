@@ -16,14 +16,27 @@ function ProfilePage() {
   const navigate = useNavigate();
   const { user, profile, loading } = useAuth();
   const [orderCount, setOrderCount] = useState(0);
+  const clearCart = useCart((s) => s.clear);
 
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
     supabase
       .from("orders")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .then(({ count }) => setOrderCount(count ?? 0));
+      .then(({ count, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.error("[profile] order count error:", error);
+          setOrderCount(0);
+          return;
+        }
+        setOrderCount(count ?? 0);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   if (loading) return null;
@@ -54,7 +67,6 @@ function ProfilePage() {
       .toUpperCase()
       .slice(0, 2) || "?";
 
-  const clearCart = useCart((s) => s.clear);
   const handleLogout = async () => {
     if (!confirm("Sign out of SPK Natural Farming?")) return;
     await signOut();
