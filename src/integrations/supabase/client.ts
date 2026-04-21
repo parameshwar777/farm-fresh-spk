@@ -18,7 +18,7 @@ export type Profile = {
   email: string | null;
   phone: string | null;
   phone_number: string | null;
-  role: "customer" | "admin";
+  role: "customer" | "admin" | "merchant";
   avatar_url: string | null;
   created_at: string;
 };
