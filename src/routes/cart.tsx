@@ -8,12 +8,48 @@ import {
   type Address,
   type DeliverySlot,
 } from "@/integrations/supabase/client";
+import {
+  createRazorpayOrder,
+  verifyRazorpayPayment,
+} from "@/integrations/razorpay/payments.functions";
 import { useCart } from "@/store/cart";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => {
+      open: () => void;
+      on: (event: string, cb: (data: unknown) => void) => void;
+    };
+  }
+}
+
+const RAZORPAY_SCRIPT = "https://checkout.razorpay.com/v1/checkout.js";
+
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") return resolve(false);
+    if (window.Razorpay) return resolve(true);
+    const existing = document.querySelector<HTMLScriptElement>(
+      `script[src="${RAZORPAY_SCRIPT}"]`,
+    );
+    if (existing) {
+      existing.addEventListener("load", () => resolve(true));
+      existing.addEventListener("error", () => resolve(false));
+      return;
+    }
+    const s = document.createElement("script");
+    s.src = RAZORPAY_SCRIPT;
+    s.async = true;
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.body.appendChild(s);
+  });
+}
 
 export const Route = createFileRoute("/cart")({
   component: CartPage,
