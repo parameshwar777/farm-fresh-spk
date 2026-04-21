@@ -1,7 +1,11 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { Toaster } from "sonner";
+import { useEffect, useState } from "react";
+import { SplashScreen } from "@/components/SplashScreen";
 
 import appCss from "../styles.css?url";
+
+const SPLASH_KEY = "spk_splash_seen_v1";
 
 function NotFoundComponent() {
   return (
@@ -82,8 +86,31 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  const [showSplash, setShowSplash] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      const seen = sessionStorage.getItem(SPLASH_KEY);
+      if (!seen) setShowSplash(true);
+    } catch {
+      // sessionStorage unavailable — skip splash
+    }
+    setReady(true);
+  }, []);
+
+  const finishSplash = () => {
+    try {
+      sessionStorage.setItem(SPLASH_KEY, "1");
+    } catch {
+      // ignore
+    }
+    setShowSplash(false);
+  };
+
   return (
     <div className="mobile-frame">
+      {ready && showSplash && <SplashScreen onFinish={finishSplash} />}
       <Outlet />
       <Toaster position="top-center" richColors closeButton theme="light" />
     </div>

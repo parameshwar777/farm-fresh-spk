@@ -1,12 +1,10 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { ArrowLeft, ArrowRight, Mail, Phone, ShieldCheck, Sparkles } from "lucide-react";
 import { SpkLogo } from "@/components/SpkLogo";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useOTP, type OTPType } from "@/hooks/useOTP";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -14,140 +12,348 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<OTPType>("phone");
+  const [identifier, setIdentifier] = useState("");
+  const [otpInput, setOtpInput] = useState("");
+  const [needsName, setNeedsName] = useState(false);
   const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { sendOTP, verifyOTP, loading, error, otpSent, devOTP, reset } = useOTP();
 
-  const handle = async (e: React.FormEvent) => {
+  const cleanIdentifier = () =>
+    mode === "phone" ? `+91${identifier.replace(/\D/g, "")}` : identifier.trim();
+
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: window.location.origin,
-            data: { full_name: fullName, phone },
-          },
-        });
-        if (error) throw error;
-        toast.success("Account created! You're signed in.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast.success("Welcome back!");
-      }
-      navigate({ to: "/" });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Something went wrong";
-      toast.error(msg);
-    } finally {
-      setLoading(false);
+    if (mode === "phone" && identifier.replace(/\D/g, "").length < 10) {
+      toast.error("Enter a valid 10-digit mobile number");
+      return;
+    }
+    if (mode === "email" && !identifier.includes("@")) {
+      toast.error("Enter a valid email address");
+      return;
+    }
+    const result = await sendOTP(cleanIdentifier(), mode);
+    if (result.success) {
+      toast.success(`OTP sent to your ${mode === "phone" ? "phone" : "email"}`);
     }
   };
 
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otpInput.length !== 6) {
+      toast.error("Enter the 6-digit OTP");
+      return;
+    }
+    const result = await verifyOTP(cleanIdentifier(), mode, otpInput);
+    if (result.success) {
+      if (result.is_new_user) {
+        setNeedsName(true);
+      } else {
+        toast.success("Welcome back!");
+        navigate({ to: "/" });
+      }
+    }
+  };
+
+  const handleNameSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fullName.trim()) {
+      toast.error("Please enter your name");
+      return;
+    }
+    // Profile name update is handled by the verify-otp edge function or after-login flow.
+    toast.success(`Welcome, ${fullName.split(" ")[0]}!`);
+    navigate({ to: "/" });
+  };
+
+  const switchMode = (m: OTPType) => {
+    if (m === mode) return;
+    setMode(m);
+    setIdentifier("");
+    setOtpInput("");
+    reset();
+  };
+
   return (
-    <div className="safe-top safe-bottom flex min-h-[100dvh] flex-col items-center justify-center px-6">
+    <div
+      className="safe-top safe-bottom relative flex min-h-[100dvh] flex-col items-center justify-start px-6 pt-10 pb-10 overflow-hidden"
+      style={{
+        background:
+          "radial-gradient(circle at 20% 0%, oklch(0.92 0.16 90 / 0.55), transparent 55%), radial-gradient(circle at 100% 30%, oklch(0.78 0.14 55 / 0.35), transparent 55%), linear-gradient(180deg, oklch(0.96 0.04 95) 0%, oklch(0.985 0.01 95) 100%)",
+      }}
+    >
+      {/* Back link */}
+      <Link
+        to="/"
+        className="absolute left-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-primary shadow-sm ring-1 ring-primary/10 backdrop-blur"
+      >
+        <ArrowLeft className="h-4 w-4" />
+      </Link>
+
+      {/* Decorative leaves */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute -top-2 right-2 text-4xl opacity-30"
+        animate={{ y: [0, 10, 0], rotate: [0, 8, 0] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+      >
+        🌿
+      </motion.div>
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute bottom-4 left-2 text-3xl opacity-30"
+        animate={{ y: [0, -6, 0] }}
+        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+      >
+        🍃
+      </motion.div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         className="w-full max-w-sm"
       >
+        {/* Logo */}
         <div className="mb-6 flex flex-col items-center">
-          <SpkLogo size={100} />
-          <h1 className="mt-3 font-display text-2xl font-bold text-primary">
-            SPK Natural Farming
-          </h1>
-          <p className="text-sm text-muted-foreground">Fresh From Farm</p>
-        </div>
-
-        <div className="rounded-3xl bg-card p-6 shadow-sm">
-          <h2 className="mb-1 font-display text-xl font-bold text-primary">
-            {mode === "signin" ? "Welcome back" : "Create account"}
-          </h2>
-          <p className="mb-4 text-sm text-muted-foreground">
-            {mode === "signin" ? "Sign in to continue shopping" : "Sign up to start ordering"}
-          </p>
-
-          <form onSubmit={handle} className="space-y-3">
-            {mode === "signup" && (
-              <>
-                <div>
-                  <Label htmlFor="name">Full name</Label>
-                  <Input
-                    id="name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    required
-                    placeholder="Your name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+91 9876543210"
-                  />
-                </div>
-              </>
-            )}
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="you@example.com"
-              />
-            </div>
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                placeholder="Min 6 characters"
-              />
-            </div>
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="h-12 w-full rounded-full bg-primary text-base font-semibold text-primary-foreground hover:bg-primary/90"
-            >
-              {loading ? "Please wait…" : mode === "signin" ? "Sign In" : "Sign Up"}
-            </Button>
-          </form>
-
-          <button
-            type="button"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-primary"
+          <motion.div
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="relative"
           >
-            {mode === "signin"
-              ? "New here? Create an account"
-              : "Already have an account? Sign in"}
-          </button>
+            <div className="absolute -inset-2 rounded-full bg-secondary/30 blur-xl" />
+            <SpkLogo size={92} className="logo-glow relative" />
+          </motion.div>
+          <h1 className="mt-4 font-display text-2xl font-extrabold">
+            <span className="shimmer-text">SPK Natural Farming</span>
+          </h1>
+          <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-white/70 px-2.5 py-0.5 backdrop-blur">
+            <Sparkles className="h-3 w-3 text-secondary fill-secondary" />
+            <span className="text-[10px] font-semibold tracking-wide text-primary uppercase">
+              Fresh From Farm
+            </span>
+          </div>
         </div>
 
-        <Link
-          to="/"
-          className="mt-4 block text-center text-sm text-muted-foreground hover:text-primary"
+        {/* Card */}
+        <motion.div
+          layout
+          transition={{ layout: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } }}
+          className="rounded-3xl bg-white/85 p-5 shadow-[0_20px_60px_-20px_rgba(27,67,50,0.25)] ring-1 ring-primary/10 backdrop-blur"
         >
-          ← Continue browsing
-        </Link>
+          {!needsName && (
+            <>
+              <h2 className="mb-1 font-display text-lg font-bold text-primary">
+                {otpSent ? "Verify OTP" : "Sign in / Sign up"}
+              </h2>
+              <p className="mb-4 text-xs text-muted-foreground">
+                {otpSent
+                  ? `We sent a 6-digit code to ${cleanIdentifier()}`
+                  : "Get a one-time code on your phone or email"}
+              </p>
+
+              {/* Mode toggle */}
+              {!otpSent && (
+                <div className="mb-4 flex rounded-full bg-muted p-1">
+                  {(
+                    [
+                      { id: "phone", label: "Phone", icon: Phone },
+                      { id: "email", label: "Email", icon: Mail },
+                    ] as const
+                  ).map(({ id, label, icon: Icon }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => switchMode(id)}
+                      className={`relative flex flex-1 items-center justify-center gap-1.5 rounded-full py-2 text-sm font-semibold transition-colors ${
+                        mode === id ? "text-primary-foreground" : "text-muted-foreground"
+                      }`}
+                    >
+                      {mode === id && (
+                        <motion.div
+                          layoutId="modePill"
+                          className="absolute inset-0 rounded-full bg-primary shadow"
+                          transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                        />
+                      )}
+                      <Icon className="relative h-4 w-4" />
+                      <span className="relative">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <AnimatePresence mode="wait" initial={false}>
+                {!otpSent ? (
+                  <motion.form
+                    key="send"
+                    onSubmit={handleSend}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.25 }}
+                    className="space-y-3"
+                  >
+                    <label className="block text-xs font-semibold text-primary">
+                      {mode === "phone" ? "Mobile number" : "Email address"}
+                    </label>
+                    <div className="flex items-center overflow-hidden rounded-2xl border border-primary/15 bg-white focus-within:ring-2 focus-within:ring-primary/30">
+                      {mode === "phone" && (
+                        <div className="flex h-12 items-center border-r border-primary/10 bg-muted/60 px-3 text-sm font-semibold text-primary">
+                          +91
+                        </div>
+                      )}
+                      <input
+                        type={mode === "phone" ? "tel" : "email"}
+                        inputMode={mode === "phone" ? "numeric" : "email"}
+                        value={identifier}
+                        onChange={(e) => setIdentifier(e.target.value)}
+                        placeholder={
+                          mode === "phone" ? "9876543210" : "you@example.com"
+                        }
+                        autoComplete={mode === "phone" ? "tel" : "email"}
+                        className="h-12 w-full bg-transparent px-3 text-base outline-none placeholder:text-muted-foreground"
+                      />
+                    </div>
+
+                    {error && (
+                      <p className="text-xs font-medium text-destructive">{error}</p>
+                    )}
+
+                    <motion.button
+                      type="submit"
+                      disabled={loading}
+                      whileTap={{ scale: 0.97 }}
+                      className="group flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-lg shadow-primary/30 disabled:opacity-60"
+                    >
+                      {loading ? "Sending OTP…" : "Send OTP"}
+                      {!loading && (
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      )}
+                    </motion.button>
+                  </motion.form>
+                ) : (
+                  <motion.form
+                    key="verify"
+                    onSubmit={handleVerify}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.25 }}
+                    className="space-y-3"
+                  >
+                    {devOTP && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-xl border border-secondary/40 bg-secondary/15 px-3 py-2 text-center"
+                      >
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-primary/70">
+                          Dev mode OTP
+                        </p>
+                        <p className="font-mono text-lg font-bold tracking-[0.4em] text-primary">
+                          {devOTP}
+                        </p>
+                      </motion.div>
+                    )}
+
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoFocus
+                      maxLength={6}
+                      value={otpInput}
+                      onChange={(e) =>
+                        setOtpInput(e.target.value.replace(/\D/g, "").slice(0, 6))
+                      }
+                      placeholder="••••••"
+                      className="h-14 w-full rounded-2xl border border-primary/15 bg-white text-center font-mono text-2xl font-bold tracking-[0.6em] text-primary outline-none placeholder:text-muted-foreground/40 focus:ring-2 focus:ring-primary/30"
+                    />
+
+                    <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+                      <ShieldCheck className="h-3 w-3 text-success" />
+                      Code expires in 5 minutes
+                    </p>
+
+                    {error && (
+                      <p className="text-center text-xs font-medium text-destructive">
+                        {error}
+                      </p>
+                    )}
+
+                    <motion.button
+                      type="submit"
+                      disabled={loading || otpInput.length !== 6}
+                      whileTap={{ scale: 0.97 }}
+                      className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-lg shadow-primary/30 disabled:opacity-60"
+                    >
+                      {loading ? "Verifying…" : "Verify & Continue"}
+                    </motion.button>
+
+                    <div className="flex items-center justify-between pt-1 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          reset();
+                          setOtpInput("");
+                        }}
+                        className="font-semibold text-muted-foreground hover:text-primary"
+                      >
+                        ← Change {mode === "phone" ? "number" : "email"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => sendOTP(cleanIdentifier(), mode)}
+                        disabled={loading}
+                        className="font-semibold text-accent hover:text-primary"
+                      >
+                        Resend OTP
+                      </button>
+                    </div>
+                  </motion.form>
+                )}
+              </AnimatePresence>
+            </>
+          )}
+
+          {needsName && (
+            <motion.form
+              key="name"
+              onSubmit={handleNameSubmit}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-3"
+            >
+              <h2 className="font-display text-lg font-bold text-primary">
+                One last step 👋
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Tell us your name so we can personalise your experience.
+              </p>
+              <input
+                type="text"
+                autoFocus
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Your full name"
+                className="h-12 w-full rounded-2xl border border-primary/15 bg-white px-4 text-base outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <motion.button
+                type="submit"
+                whileTap={{ scale: 0.97 }}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-lg shadow-primary/30"
+              >
+                Continue
+                <ArrowRight className="h-4 w-4" />
+              </motion.button>
+            </motion.form>
+          )}
+        </motion.div>
+
+        <p className="mt-5 text-center text-[11px] text-muted-foreground">
+          By continuing you agree to our Terms & Privacy Policy
+        </p>
       </motion.div>
     </div>
   );
