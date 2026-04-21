@@ -4,6 +4,7 @@ import { LogOut, ShoppingBag, MapPin, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, signOut } from "@/hooks/useAuth";
+import { useCart } from "@/store/cart";
 import { TopBar } from "@/components/TopBar";
 import { BottomNav } from "@/components/BottomNav";
 
@@ -53,11 +54,13 @@ function ProfilePage() {
       .toUpperCase()
       .slice(0, 2) || "?";
 
+  const clearCart = useCart((s) => s.clear);
   const handleLogout = async () => {
     if (!confirm("Sign out of SPK Natural Farming?")) return;
     await signOut();
+    clearCart();
     toast.success("Signed out");
-    navigate({ to: "/" });
+    navigate({ to: "/login" });
   };
 
   return (
