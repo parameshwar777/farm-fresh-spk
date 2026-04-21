@@ -50,32 +50,56 @@ function SignupPage() {
 
       if (signUpError) {
         setFormError(signUpError.message);
+        setSubmitting(false);
         return;
       }
 
-      // Try to sign in immediately (works when email confirmation is OFF).
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-
-      const user = signInData?.user ?? signUpData?.user;
-      if (user) {
-        await supabase
-          .from("profiles")
-          .update({ full_name: fullName.trim() })
-          .eq("id", user.id);
+      // If we already have a session from signUp (email-confirmation OFF), we're done.
+      if (signUpData?.session) {
+        if (signUpData.user) {
+          await supabase
+            .from("profiles")
+            .update({ full_name: fullName.trim() })
+            .eq("id", signUpData.user.id);
+        }
+        toast.success(`Welcome, ${fullName.split(" ")[0]}!`);
+        navigate({ to: "/" });
+        return;
       }
 
-      if (signInError) {
-        // Fallback: confirmation is still required on the project
+      // No session yet — try to sign in immediately. Catch network errors so
+      // we never bubble up "Failed to fetch" when the account was actually created.
+      try {
+        const { data: signInData, error: signInError } =
+          await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password,
+          });
+
+        if (signInError) {
+          // Most likely: email confirmation is required on this Supabase project.
+          if (signInError.message?.toLowerCase().includes("not confirmed")) {
+            toast.success("Account created! Please check your email to confirm, then sign in.");
+          } else {
+            toast.success("Account created. Please sign in.");
+          }
+          navigate({ to: "/login" });
+          return;
+        }
+
+        if (signInData?.user) {
+          await supabase
+            .from("profiles")
+            .update({ full_name: fullName.trim() })
+            .eq("id", signInData.user.id);
+        }
+        toast.success(`Welcome, ${fullName.split(" ")[0]}!`);
+        navigate({ to: "/" });
+      } catch {
+        // Network blip on auto-sign-in — account exists, send to login
         toast.success("Account created. Please sign in.");
         navigate({ to: "/login" });
-        return;
       }
-
-      toast.success(`Welcome, ${fullName.split(" ")[0]}!`);
-      navigate({ to: "/" });
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Failed to create account");
     } finally {
