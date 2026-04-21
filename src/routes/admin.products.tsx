@@ -221,6 +221,82 @@ function AdminProducts() {
                   />
                 </div>
               </div>
+
+              {/* Image source toggle */}
+              <div className="rounded-2xl border border-border bg-background/50 p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm">Use real photo</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Off = show emoji · On = show uploaded photo
+                    </p>
+                  </div>
+                  <Switch
+                    checked={editing.use_real_image ?? false}
+                    onCheckedChange={(v) =>
+                      setEditing({ ...editing, use_real_image: v })
+                    }
+                  />
+                </div>
+
+                {editing.use_real_image && (
+                  <div className="mt-3 flex items-center gap-3">
+                    <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-card">
+                      {editing.image_url ? (
+                        <img
+                          src={editing.image_url}
+                          alt="Product"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                          <ImageOff className="h-6 w-6" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) onPickImage(f);
+                          e.target.value = "";
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        disabled={uploading}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full"
+                      >
+                        <Upload className="mr-1 h-4 w-4" />
+                        {uploading
+                          ? "Uploading…"
+                          : editing.image_url
+                            ? "Replace Photo"
+                            : "Upload Photo"}
+                      </Button>
+                      {editing.image_url && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditing({ ...editing, image_url: null })
+                          }
+                          className="w-full text-xs text-destructive"
+                        >
+                          Remove photo
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
               <div>
                 <Label>Category</Label>
                 <Select
