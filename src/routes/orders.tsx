@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { supabase, type Order } from "@/integrations/supabase/client";
+import { supabase, type Order, type OrderItem, type Product } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar } from "@/components/TopBar";
 import { BottomNav } from "@/components/BottomNav";
@@ -20,9 +20,23 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-destructive text-destructive-foreground",
 };
 
+const STATUS_LABEL: Record<string, string> = {
+  pending: "Pending",
+  confirmed: "Payment received",
+  packing: "Packing",
+  out_for_delivery: "Out for delivery",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
+
+type OrderWithItems = Order & {
+  itemSummary: string;
+  itemCount: number;
+};
+
 function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,12 +45,34 @@ function OrdersPage() {
       return;
     }
     (async () => {
-      const { data } = await supabase
+      const { data: orderRows } = await supabase
         .from("orders")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
-      setOrders((data as Order[] | null) ?? []);
+      const list = (orderRows as Order[] | null) ?? [];
+
+      // Fetch all items + product names in one round-trip
+      let items: (OrderItem & { product?: Pick<Product, "name" | "emoji"> })[] = [];
+      if (list.length > 0) {
+        const { data: itemRows } = await supabase
+          .from("order_items")
+          .select("*, product:products(name, emoji)")
+          .in(
+            "order_id",
+            list.map((o) => o.id),
+          );
+        items = (itemRows as typeof items | null) ?? [];
+      }
+
+      const enriched: OrderWithItems[] = list.map((o) => {
+        const its = items.filter((i) => i.order_id === o.id);
+        const names = its
+          .map((i) => `${i.product?.emoji ?? ""} ${i.product?.name ?? "Item"} ×${i.quantity}`)
+          .join(", ");
+        return { ...o, itemSummary: names || "Items", itemCount: its.length };
+      });
+      setOrders(enriched);
       setLoading(false);
     })();
   }, [user]);
@@ -116,29 +152,35 @@ function OrdersPage() {
   );
 }
 
-function OrderCard({ order }: { order: Order }) {
+function OrderCard({ order }: { order: OrderWithItems }) {
   return (
     <Link
       to="/orders/$orderId"
       params={{ orderId: order.id }}
       className="block rounded-2xl bg-card p-4 shadow-sm"
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="font-display font-bold text-primary">#{order.id.slice(0, 8)}</p>
-          <p className="text-xs text-muted-foreground">
-            {format(new Date(order.created_at), "dd MMM yyyy")}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-display font-bold text-primary">{order.itemSummary}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            #{order.id.slice(0, 8)} · {format(new Date(order.created_at), "dd MMM yyyy")}
           </p>
         </div>
         <span
-          className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
             STATUS_COLORS[order.status] ?? "bg-muted"
           }`}
         >
-          {order.status.replace(/_/g, " ")}
+          {STATUS_LABEL[order.status] ?? order.status.replace(/_/g, " ")}
         </span>
       </div>
-      <p className="mt-2 font-display font-bold text-accent">₹{order.total_amount.toFixed(0)}</p>
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-xs text-muted-foreground capitalize">
+          {order.payment_method === "online" ? "Online" : "COD"}
+          {order.payment_status === "paid" ? " · Paid" : " · Payment pending"}
+        </span>
+        <p className="font-display font-bold text-accent">₹{order.total_amount.toFixed(0)}</p>
+      </div>
     </Link>
   );
 }
