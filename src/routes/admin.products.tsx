@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Pencil, Trash2, Search, Upload, ImageOff } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, type Category, type Product } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ProductImage } from "@/components/ProductImage";
 
 export const Route = createFileRoute("/admin/products")({
   component: AdminProducts,
@@ -26,6 +27,8 @@ type Form = Partial<Product>;
 const empty: Form = {
   name: "",
   emoji: "🥦",
+  image_url: null,
+  use_real_image: false,
   price: 0,
   unit: "per kg",
   stock_quantity: 0,
