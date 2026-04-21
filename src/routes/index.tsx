@@ -261,10 +261,10 @@ function HomePage() {
           </Link>
         </div>
         <motion.div
+          key={loading ? "loading" : `cats-${categories.length}`}
           variants={stagger}
           initial="hidden"
-          whileInView="show"
-          viewport={{ once: true }}
+          animate="show"
           className="grid grid-cols-2 gap-3"
         >
           {loading
@@ -313,10 +313,10 @@ function HomePage() {
           </div>
           <div className="scroll-hide -mx-4 overflow-x-auto px-4 pb-2">
             <motion.div
+              key={`feat-${featured.length}`}
               variants={stagger}
               initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
+              animate="show"
               className="flex gap-3"
             >
               {featured.map((p) => (
