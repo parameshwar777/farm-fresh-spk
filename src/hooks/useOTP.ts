@@ -28,7 +28,23 @@ export function useOTP() {
       const { data, error } = await supabase.functions.invoke("send-otp", {
         body: { identifier, type },
       });
-      if (error) throw error;
+
+      // supabase.functions.invoke wraps non-2xx responses in a FunctionsHttpError
+      // and the real message lives in error.context (a Response object). Extract it.
+      if (error) {
+        let realMsg = error.message;
+        try {
+          const ctx = (error as unknown as { context?: Response }).context;
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.json();
+            if (body?.error) realMsg = body.error;
+            else if (body?.message) realMsg = body.message;
+          }
+        } catch {
+          /* ignore parse failures, fall back to error.message */
+        }
+        throw new Error(realMsg);
+      }
       if (data?.error) throw new Error(data.error);
       if (data?.success === false) throw new Error(data?.message || "Failed to send OTP");
 
@@ -54,7 +70,20 @@ export function useOTP() {
       const { data, error } = await supabase.functions.invoke("verify-otp", {
         body: { identifier, type, otp_code },
       });
-      if (error) throw error;
+      if (error) {
+        let realMsg = error.message;
+        try {
+          const ctx = (error as unknown as { context?: Response }).context;
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.json();
+            if (body?.error) realMsg = body.error;
+            else if (body?.message) realMsg = body.message;
+          }
+        } catch {
+          /* ignore */
+        }
+        throw new Error(realMsg);
+      }
       if (data?.error) throw new Error(data.error);
 
       // Set the Supabase session using tokens returned by the edge function
