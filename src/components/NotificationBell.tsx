@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "@tanstack/react-router";
+
 import { Bell, CheckCheck, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
@@ -186,8 +186,4 @@ function iconFor(type: string) {
   }
 }
 
-// Minimal default export so users can also `import NotificationBell` if they want
 export default NotificationBell;
-
-// Optional standalone Link helper (unused — keeps Link import warning-free in some builds)
-export const _LinkRef = Link;
