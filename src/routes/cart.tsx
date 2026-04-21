@@ -63,7 +63,7 @@ function CartPage() {
   const [slots, setSlots] = useState<DeliverySlot[]>([]);
   const [addressId, setAddressId] = useState<string>("");
   const [slotId, setSlotId] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<"cod" | "upi">("cod");
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "online">("cod");
   const [deliveryCharge, setDeliveryCharge] = useState(20);
   const [freeDeliveryAbove, setFreeDeliveryAbove] = useState(500);
   const [submitting, setSubmitting] = useState(false);
