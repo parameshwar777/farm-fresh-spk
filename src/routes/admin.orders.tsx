@@ -13,7 +13,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/admin/orders")({
-  component: AdminOrders;
+  component: AdminOrders,
 });
 
 const STATUSES: OrderStatus[] = [
