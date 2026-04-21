@@ -140,6 +140,68 @@ function CartPage() {
     toast.success("Address saved");
   };
 
+  const startRazorpayCheckout = async (orderId: string) => {
+    const ok = await loadRazorpayScript();
+    if (!ok || !window.Razorpay) {
+      toast.error("Could not load payment SDK. Check your connection.");
+      return false;
+    }
+    let rzpData: Awaited<ReturnType<typeof createRazorpayOrder>>;
+    try {
+      rzpData = await createRazorpayOrder({ data: { orderId } });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not start payment";
+      toast.error(msg);
+      return false;
+    }
+
+    return new Promise<boolean>((resolve) => {
+      const rzp = new window.Razorpay!({
+        key: rzpData.keyId,
+        amount: rzpData.amount,
+        currency: rzpData.currency,
+        order_id: rzpData.razorpayOrderId,
+        name: "SPK Farm Fresh",
+        description: `Order #${orderId.slice(0, 8)}`,
+        prefill: {
+          name: user?.user_metadata?.full_name ?? "",
+          email: user?.email ?? "",
+          contact: user?.phone ?? "",
+        },
+        theme: { color: "#16a34a" },
+        handler: async (resp: unknown) => {
+          const r = resp as {
+            razorpay_payment_id: string;
+            razorpay_order_id: string;
+            razorpay_signature: string;
+          };
+          try {
+            await verifyRazorpayPayment({
+              data: {
+                orderId,
+                razorpay_order_id: r.razorpay_order_id,
+                razorpay_payment_id: r.razorpay_payment_id,
+                razorpay_signature: r.razorpay_signature,
+              },
+            });
+            resolve(true);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : "Payment verification failed";
+            toast.error(msg);
+            resolve(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            toast.error("Payment cancelled. Your order is awaiting payment.");
+            resolve(false);
+          },
+        },
+      });
+      rzp.open();
+    });
+  };
+
   const placeOrder = async () => {
     if (!user) {
       navigate({ to: "/login" });
@@ -176,6 +238,15 @@ function CartPage() {
       }));
       const { error: itemsErr } = await supabase.from("order_items").insert(orderItems);
       if (itemsErr) throw itemsErr;
+
+      if (paymentMethod === "online") {
+        const paid = await startRazorpayCheckout(order.id);
+        if (!paid) {
+          // Order is saved as pending — user can retry from Orders page.
+          navigate({ to: "/orders/$orderId", params: { orderId: order.id } });
+          return;
+        }
+      }
 
       clear();
       navigate({ to: "/order-success/$orderId", params: { orderId: order.id } });
