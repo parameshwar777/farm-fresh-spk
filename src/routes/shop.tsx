@@ -40,7 +40,7 @@ function ShopPage() {
   const loading = catLoading && categories.length === 0;
 
   return (
-    <div className="min-h-[100dvh] pb-24">
+    <div className="min-h-[100dvh] pb-bottom-nav">
       <TopBar />
       <div className="px-4 py-4">
         <h1 className="mb-3 font-display text-2xl font-bold text-primary">Shop</h1>

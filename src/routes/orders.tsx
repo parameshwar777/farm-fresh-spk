@@ -81,7 +81,7 @@ function OrdersPage() {
 
   if (!user) {
     return (
-      <div className="min-h-[100dvh] pb-24">
+      <div className="min-h-[100dvh] pb-bottom-nav">
         <TopBar />
         <div className="px-4 py-6 text-center">
           <p className="text-muted-foreground">Sign in to see your orders</p>
@@ -103,7 +103,7 @@ function OrdersPage() {
   const past = orders.filter((o) => ["delivered", "cancelled"].includes(o.status));
 
   return (
-    <div className="min-h-[100dvh] pb-24">
+    <div className="min-h-[100dvh] pb-bottom-nav">
       <TopBar />
       <div className="px-4 py-4">
         <h1 className="mb-4 font-display text-2xl font-bold text-primary">My Orders</h1>
