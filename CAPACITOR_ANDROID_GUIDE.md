@@ -197,6 +197,42 @@ Output: `android\app\build\outputs\bundle\release\app-release.aab`
 
 ---
 
+## 8. Set app icon
+
+### Option A — easiest inside Android Studio
+
+1. Open the Android project:
+
+```cmd
+npx cap open android
+```
+
+2. In Android Studio, open: **app > res**
+3. Right click **res** → **New** → **Image Asset**
+4. In **Asset Type**, choose **Image**
+5. Select your logo PNG
+6. Set **Name** to `ic_launcher`
+7. Click **Next** → **Finish**
+
+This automatically creates all required icon sizes.
+
+### Best icon image rules
+
+- Use a **1024 x 1024 PNG**
+- Keep the logo centered with some empty space around it
+- Avoid tiny text in the icon
+- Use a solid background so it looks clear on all phones
+
+### After changing icon
+
+```cmd
+npx cap sync android
+```
+
+Then rebuild and reinstall the app.
+
+---
+
 ## Troubleshooting
 
 | Problem | Fix |
@@ -207,6 +243,7 @@ Output: `android\app\build\outputs\bundle\release\app-release.aab`
 | `'gradlew' is not recognized` | Use `gradlew.bat` (with the `.bat`) on Windows, and make sure you're inside the `android\` folder. |
 | White screen on launch | Check `capacitor.config.ts` → `server.url` is reachable, or you ran `npm run build && npx cap sync android` after disabling `server`. |
 | Keyboard freezes the app | Already fixed in this project (`Keyboard.resize = "native"` + viewport meta). Make sure `@capacitor/keyboard` is installed and you ran `npx cap sync android`. |
+| App feels laggy on phone | Build a fresh app with `npm run build` then `npx cap sync android`, and test the new APK. Live URL mode is slower than fully bundled offline mode. |
 | "SDK location not found" | Open Android Studio → SDK Manager, copy the SDK path, then set environment variable `ANDROID_HOME` to that path (System Properties → Environment Variables → New User Variable). Open a new terminal afterwards. |
 | Camera / gallery upload doesn't work | The app uses standard HTML file input, which Android WebView handles natively — no extra plugin required. Allow storage permission when prompted. |
 | App not updating after code change | You forgot `npm run build` and `npx cap sync android` before rebuilding. |

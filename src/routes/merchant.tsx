@@ -26,6 +26,7 @@ function MerchantPortal() {
   const [tab, setTab] = useState<"to_deliver" | "delivered">("to_deliver");
   const [query, setQuery] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const canAccess = !!user && (isMerchant || isAdmin);
 
   if (authLoading) {
     return null;
@@ -111,6 +112,7 @@ function MerchantPortal() {
   };
 
   useEffect(() => {
+    if (!canAccess) return;
     load();
     const ch = supabase
       .channel("merchant-orders")
@@ -123,7 +125,7 @@ function MerchantPortal() {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, []);
+  }, [canAccess]);
 
   const markDelivered = async (id: string) => {
     if (!confirm("Mark this order as DELIVERED?")) return;
@@ -166,6 +168,18 @@ function MerchantPortal() {
     await signOut();
     window.location.href = "/login";
   };
+
+  if (authLoading) {
+    return null;
+  }
+
+  if (!user) {
+    throw redirect({ to: "/login" });
+  }
+
+  if (!isMerchant && !isAdmin) {
+    throw redirect({ to: "/" });
+  }
 
   return (
     <div className="min-h-[100dvh] pb-20">
