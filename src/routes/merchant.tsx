@@ -28,18 +28,6 @@ function MerchantPortal() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const canAccess = !!user && (isMerchant || isAdmin);
 
-  if (authLoading) {
-    return null;
-  }
-
-  if (!user) {
-    throw redirect({ to: "/login" });
-  }
-
-  if (!isMerchant && !isAdmin) {
-    throw redirect({ to: "/" });
-  }
-
   const load = async () => {
     setLoading(true);
     // Paid orders only
