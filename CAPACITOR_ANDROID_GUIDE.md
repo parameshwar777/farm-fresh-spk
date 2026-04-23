@@ -1,17 +1,30 @@
 # SPK Natural Farming — Android APK Guide (Capacitor)
 
 This guide walks you from this Lovable web app to a working `.apk` on your phone.
+**Commands shown work in Windows Command Prompt (`cmd.exe`) and PowerShell.**
 
 ---
 
 ## 0. One-time prerequisites (install on your computer)
 
-1. **Node.js 20+** & **bun** (you already have these in Lovable, install locally too): https://nodejs.org
-2. **Android Studio** (Hedgehog or newer): https://developer.android.com/studio
+1. **Node.js 20+ (LTS)** — https://nodejs.org (the installer adds `node` and `npm` to your PATH).
+2. **Git for Windows** — https://git-scm.com/download/win
+3. **Android Studio** (Hedgehog or newer): https://developer.android.com/studio
    - During install, let it download the **Android SDK**, **Platform Tools** and an **Emulator** image.
-3. **Java JDK 17** (Android Studio bundles it — no extra install needed in most cases).
+4. **Java JDK 17** (Android Studio bundles it — no extra install needed in most cases).
 
 After installing Android Studio, open it once → *More Actions* → *SDK Manager* → make sure **Android SDK Platform 34** and **Android SDK Build-Tools 34** are checked.
+
+### Verify Node & npm are installed
+
+Open a new **Command Prompt** and run:
+
+```cmd
+node -v
+npm -v
+```
+
+Both should print a version number. If not, reinstall Node.js and reopen the terminal.
 
 ---
 
@@ -19,19 +32,20 @@ After installing Android Studio, open it once → *More Actions* → *SDK Manage
 
 In Lovable click **GitHub → Connect / Open** to push this project to a GitHub repo, then on your laptop:
 
-```bash
+```cmd
 git clone <your-repo-url> spk-app
 cd spk-app
-bun install
+npm install
 ```
+
+> `npm install` may take 2–3 minutes the first time. Ignore any yellow `npm warn` messages — only red `npm ERR!` lines matter.
 
 ---
 
 ## 2. Install Capacitor
 
-```bash
-bun add @capacitor/core @capacitor/cli @capacitor/android \
-        @capacitor/keyboard @capacitor/status-bar @capacitor/splash-screen
+```cmd
+npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/keyboard @capacitor/status-bar @capacitor/splash-screen
 ```
 
 > `capacitor.config.ts` is already in this repo — no need to run `cap init`.
@@ -40,11 +54,11 @@ bun add @capacitor/core @capacitor/cli @capacitor/android \
 
 ## 3. Add the Android platform
 
-```bash
-bunx cap add android
+```cmd
+npx cap add android
 ```
 
-This creates an `android/` folder (a real Android Studio project).
+This creates an `android\` folder (a real Android Studio project).
 
 ---
 
@@ -52,9 +66,9 @@ This creates an `android/` folder (a real Android Studio project).
 
 Every time you change code, repeat these two steps:
 
-```bash
-bun run build         # produces dist/
-bunx cap sync android # copies dist + plugins into android/
+```cmd
+npm run build
+npx cap sync android
 ```
 
 > The included `capacitor.config.ts` currently points at the **live Lovable URL**
@@ -67,8 +81,8 @@ bunx cap sync android # copies dist + plugins into android/
 
 ## 5. Open in Android Studio & run on a phone
 
-```bash
-bunx cap open android
+```cmd
+npx cap open android
 ```
 
 Android Studio will open the project. First time it will index for a few minutes.
@@ -89,18 +103,19 @@ The app installs and launches on your phone. 🎉
 
 ### 6a. Generate a signing key (one time, keep this file safe forever)
 
-```bash
-keytool -genkey -v -keystore spk-release.jks \
-  -keyalg RSA -keysize 2048 -validity 10000 -alias spk
+`keytool` ships with the JDK that Android Studio installs. If `keytool` is not recognized, add `C:\Program Files\Android\Android Studio\jbr\bin` to your **System PATH** and open a new terminal.
+
+```cmd
+keytool -genkey -v -keystore spk-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias spk
 ```
 
 It will ask for a password — **save it in a password manager**. If you lose this `.jks` file or password you can NEVER push updates to the same Play Store listing.
 
-Move `spk-release.jks` into `android/app/`.
+Move `spk-release.jks` into `android\app\`.
 
 ### 6b. Tell Gradle about your key
 
-Create file `android/key.properties`:
+Create file `android\key.properties`:
 
 ```properties
 storePassword=YOUR_PASSWORD
@@ -109,7 +124,7 @@ keyAlias=spk
 storeFile=spk-release.jks
 ```
 
-Edit `android/app/build.gradle` and add **above** `android { ... }`:
+Edit `android\app\build.gradle` and add **above** `android { ... }`:
 
 ```gradle
 def keystoreProperties = new Properties()
@@ -142,35 +157,41 @@ buildTypes {
 
 ### 6c. Build the APK
 
-In Android Studio: **Build → Build Bundle(s) / APK(s) → Build APK(s)**.
+**Easiest:** In Android Studio → **Build → Build Bundle(s) / APK(s) → Build APK(s)**.
 
-Or from the terminal:
+**From terminal (Windows):**
 
-```bash
+```cmd
 cd android
-./gradlew assembleRelease
+gradlew.bat assembleRelease
 ```
 
 Your APK will be at:
 
 ```
-android/app/build/outputs/apk/release/app-release.apk
+android\app\build\outputs\apk\release\app-release.apk
 ```
 
 For Play Store upload, build an **AAB** instead:
 
-```bash
-./gradlew bundleRelease
-# -> android/app/build/outputs/bundle/release/app-release.aab
+```cmd
+cd android
+gradlew.bat bundleRelease
 ```
+
+Output: `android\app\build\outputs\bundle\release\app-release.aab`
 
 ---
 
 ## 7. Pushing a new version
 
 1. Bump the version in **Admin → Settings → App Version Control** (so users on old versions see the update prompt).
-2. In `android/app/build.gradle` increment `versionCode` (an integer, must always go up) and `versionName` (the human string, e.g. `"1.0.1"`).
-3. `bun run build && bunx cap sync android`
+2. In `android\app\build.gradle` increment `versionCode` (an integer, must always go up) and `versionName` (the human string, e.g. `"1.0.1"`).
+3. Run:
+   ```cmd
+   npm run build
+   npx cap sync android
+   ```
 4. Rebuild APK / AAB as in step 6c.
 5. Upload to Play Console.
 
@@ -180,27 +201,40 @@ For Play Store upload, build an **AAB** instead:
 
 | Problem | Fix |
 |---|---|
-| White screen on launch | Check `capacitor.config.ts` → `server.url` is reachable, or you ran `bun run build && bunx cap sync` after disabling `server`. |
-| Keyboard freezes the app | Already fixed in this project (`Keyboard.resize = "native"` + viewport meta). Make sure `@capacitor/keyboard` is installed and you ran `cap sync`. |
-| "SDK location not found" | Open Android Studio → SDK Manager, copy the SDK path, set env var `ANDROID_HOME=/path/to/sdk`. |
+| `'npm' is not recognized` | Reinstall Node.js from nodejs.org and **open a new** Command Prompt. |
+| `'npx' is not recognized` | Same fix — npx ships with npm 5.2+. |
+| `'keytool' is not recognized` | Add `C:\Program Files\Android\Android Studio\jbr\bin` to your **System PATH**, then open a new terminal. |
+| `'gradlew' is not recognized` | Use `gradlew.bat` (with the `.bat`) on Windows, and make sure you're inside the `android\` folder. |
+| White screen on launch | Check `capacitor.config.ts` → `server.url` is reachable, or you ran `npm run build && npx cap sync android` after disabling `server`. |
+| Keyboard freezes the app | Already fixed in this project (`Keyboard.resize = "native"` + viewport meta). Make sure `@capacitor/keyboard` is installed and you ran `npx cap sync android`. |
+| "SDK location not found" | Open Android Studio → SDK Manager, copy the SDK path, then set environment variable `ANDROID_HOME` to that path (System Properties → Environment Variables → New User Variable). Open a new terminal afterwards. |
 | Camera / gallery upload doesn't work | The app uses standard HTML file input, which Android WebView handles natively — no extra plugin required. Allow storage permission when prompted. |
-| App not updating after code change | You forgot `bun run build && bunx cap sync android` before rebuilding. |
+| App not updating after code change | You forgot `npm run build` and `npx cap sync android` before rebuilding. |
 
 ---
 
-## Quick command cheat-sheet
+## Quick command cheat-sheet (Windows)
 
-```bash
-# every code change:
-bun run build && bunx cap sync android
+```cmd
+:: every code change:
+npm run build
+npx cap sync android
 
-# open in android studio:
-bunx cap open android
+:: open in android studio:
+npx cap open android
 
-# build debug apk from terminal:
-cd android && ./gradlew assembleDebug
-# -> android/app/build/outputs/apk/debug/app-debug.apk
+:: build debug apk from terminal:
+cd android
+gradlew.bat assembleDebug
+:: -> android\app\build\outputs\apk\debug\app-debug.apk
 
-# build signed release apk:
-cd android && ./gradlew assembleRelease
+:: build signed release apk:
+cd android
+gradlew.bat assembleRelease
+:: -> android\app\build\outputs\apk\release\app-release.apk
+
+:: build aab for play store:
+cd android
+gradlew.bat bundleRelease
+:: -> android\app\build\outputs\bundle\release\app-release.aab
 ```
