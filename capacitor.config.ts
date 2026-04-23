@@ -11,7 +11,11 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const config: CapacitorConfig = {
   appId: "com.spk.naturalfarming",
   appName: "SPK Natural Farming",
-  webDir: "dist",
+  webDir: "dist/client",
+  server: {
+    url: "https://farm-fresh-spk.lovable.app",
+    cleartext: false,
+  },
   android: {
     allowMixedContent: true,
     webContentsDebuggingEnabled: true,
