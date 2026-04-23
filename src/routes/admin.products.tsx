@@ -288,7 +288,7 @@ function AdminProducts() {
                           onClick={() => fileInputRef.current?.click()}
                         >
                           <Upload className="mr-1 h-4 w-4" />
-                          {uploading ? "…" : "Gallery"}
+                          {uploading ? "…" : "Upload Media"}
                         </Button>
                         <Button
                           type="button"
@@ -298,7 +298,7 @@ function AdminProducts() {
                           onClick={() => cameraInputRef.current?.click()}
                         >
                           <Camera className="mr-1 h-4 w-4" />
-                          {uploading ? "…" : "Camera"}
+                          {uploading ? "…" : "Open Camera"}
                         </Button>
                       </div>
                       {editing.image_url && (
