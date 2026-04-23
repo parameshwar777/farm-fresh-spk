@@ -43,6 +43,9 @@ const config: CapacitorConfig = {
     StatusBar: {
       style: "DARK",
       backgroundColor: "#1B4332",
+      // Don't let the WebView draw under the status bar — keeps our header
+      // from sliding behind the battery / clock icons on Android.
+      overlaysWebView: false,
     },
   },
 };

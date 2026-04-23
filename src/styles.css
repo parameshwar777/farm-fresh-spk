@@ -169,10 +169,28 @@
     letter-spacing: -0.01em;
   }
 
-  /* Mobile-first safe areas */
-  .safe-top    { padding-top: env(safe-area-inset-top); }
-  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-  .safe-x      { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+  /* Mobile-first safe areas
+   * Adds the device inset PLUS a small min so we never touch the status bar
+   * (top) or the gesture / 3-button nav bar (bottom) on Android in Capacitor.
+   * `max(...)` makes sure we always get at least the fallback padding even on
+   * devices that report an inset of 0. */
+  .safe-top {
+    padding-top: max(env(safe-area-inset-top), 18px);
+  }
+  .safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 16px);
+  }
+  .safe-x {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Pages that mount a fixed BottomNav need extra bottom space so the last
+   * row of content isn't hidden behind the nav OR behind the phone's
+   * gesture bar. Apply via `pb-bottom-nav` instead of a hard-coded pb-24. */
+  .pb-bottom-nav {
+    padding-bottom: calc(72px + max(env(safe-area-inset-bottom), 16px));
+  }
 
   /* Mobile frame on desktop */
   .mobile-frame {

@@ -43,7 +43,7 @@ function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="min-h-[100dvh] pb-24">
+      <div className="min-h-[100dvh] pb-bottom-nav">
         <TopBar />
         <div className="px-4 py-6 text-center">
           <p className="text-muted-foreground">Sign in to view your profile</p>
@@ -76,7 +76,7 @@ function ProfilePage() {
   };
 
   return (
-    <div className="min-h-[100dvh] pb-24">
+    <div className="min-h-[100dvh] pb-bottom-nav">
       <TopBar />
       <div className="px-4 py-4">
         <div className="flex flex-col items-center rounded-3xl bg-card p-6">

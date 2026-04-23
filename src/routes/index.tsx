@@ -54,7 +54,7 @@ function HomePage() {
   const loading = catLoading && categories.length === 0;
 
   return (
-    <div className="min-h-[100dvh] pb-28">
+    <div className="min-h-[100dvh] pb-bottom-nav">
       <TopBar />
 
       {/* HERO */}
