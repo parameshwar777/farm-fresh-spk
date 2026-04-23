@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Upload, ImageOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Upload, ImageOff, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, type Category, type Product } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -121,6 +121,7 @@ function AdminProducts() {
   };
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
 
   const onPickImage = async (file: File) => {
@@ -259,6 +260,17 @@ function AdminProducts() {
                         ref={fileInputRef}
                         type="file"
                         accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) onPickImage(f);
+                          e.target.value = "";
+                        }}
+                      />
+                      <input
+                        ref={cameraInputRef}
+                        type="file"
+                        accept="image/*"
                         capture="environment"
                         className="hidden"
                         onChange={(e) => {
@@ -267,21 +279,28 @@ function AdminProducts() {
                           e.target.value = "";
                         }}
                       />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        disabled={uploading}
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full"
-                      >
-                        <Upload className="mr-1 h-4 w-4" />
-                        {uploading
-                          ? "Uploading…"
-                          : editing.image_url
-                            ? "Replace Photo"
-                            : "Upload Photo"}
-                      </Button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          disabled={uploading}
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <Upload className="mr-1 h-4 w-4" />
+                          {uploading ? "…" : "Gallery"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          disabled={uploading}
+                          onClick={() => cameraInputRef.current?.click()}
+                        >
+                          <Camera className="mr-1 h-4 w-4" />
+                          {uploading ? "…" : "Camera"}
+                        </Button>
+                      </div>
                       {editing.image_url && (
                         <button
                           type="button"
