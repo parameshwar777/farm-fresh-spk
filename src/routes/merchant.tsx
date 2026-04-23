@@ -6,26 +6,10 @@ import { toast } from "sonner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { supabase, type Order, type OrderItem, type Address, type Profile } from "@/integrations/supabase/client";
-import { signOut } from "@/hooks/useAuth";
+import { signOut, useAuth } from "@/hooks/useAuth";
 import { NotificationBell } from "@/components/NotificationBell";
 
 export const Route = createFileRoute("/merchant")({
-  beforeLoad: async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      throw redirect({ to: "/login" });
-    }
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", session.user.id)
-      .maybeSingle();
-    if (profile?.role !== "merchant" && profile?.role !== "admin") {
-      throw redirect({ to: "/" });
-    }
-  },
   component: MerchantPortal,
 });
 
@@ -36,11 +20,13 @@ type EnrichedOrder = Order & {
 };
 
 function MerchantPortal() {
+  const { user, isAdmin, isMerchant, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState<EnrichedOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"to_deliver" | "delivered">("to_deliver");
   const [query, setQuery] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const canAccess = !!user && (isMerchant || isAdmin);
 
   const load = async () => {
     setLoading(true);
@@ -114,6 +100,7 @@ function MerchantPortal() {
   };
 
   useEffect(() => {
+    if (!canAccess) return;
     load();
     const ch = supabase
       .channel("merchant-orders")
@@ -126,7 +113,7 @@ function MerchantPortal() {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, []);
+  }, [canAccess]);
 
   const markDelivered = async (id: string) => {
     if (!confirm("Mark this order as DELIVERED?")) return;
@@ -169,6 +156,18 @@ function MerchantPortal() {
     await signOut();
     window.location.href = "/login";
   };
+
+  if (authLoading) {
+    return null;
+  }
+
+  if (!user) {
+    throw redirect({ to: "/login" });
+  }
+
+  if (!isMerchant && !isAdmin) {
+    throw redirect({ to: "/" });
+  }
 
   return (
     <div className="min-h-[100dvh] pb-20">

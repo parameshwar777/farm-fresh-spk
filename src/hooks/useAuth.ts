@@ -31,40 +31,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+
+    const syncSession = async (sess: Session | null, finishLoading = false) => {
+      if (!active) return;
+
+      setSession(sess);
+      setUser(sess?.user ?? null);
+
+      if (!sess?.user) {
+        setProfile(null);
+        if (finishLoading) setLoading(false);
+        return;
+      }
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", sess.user.id)
+        .maybeSingle();
+
+      if (!active) return;
+
+      setProfile(data as Profile | null);
+      if (finishLoading) setLoading(false);
+    };
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, sess) => {
-      setSession(sess);
-      setUser(sess?.user ?? null);
-      if (sess?.user) {
-        setTimeout(() => {
-          supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", sess.user.id)
-            .maybeSingle()
-            .then(({ data }) => setProfile(data as Profile | null));
-        }, 0);
-      } else {
+      void syncSession(sess);
+    });
+
+    void supabase.auth
+      .getSession()
+      .then(({ data: { session: sess } }) => syncSession(sess, true))
+      .catch(() => {
+        if (!active) return;
+        setSession(null);
+        setUser(null);
         setProfile(null);
-      }
-    });
+        setLoading(false);
+      });
 
-    supabase.auth.getSession().then(({ data: { session: sess } }) => {
-      setSession(sess);
-      setUser(sess?.user ?? null);
-      if (sess?.user) {
-        supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", sess.user.id)
-          .maybeSingle()
-          .then(({ data }) => setProfile(data as Profile | null));
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const value: AuthState = {

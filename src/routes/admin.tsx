@@ -1,26 +1,10 @@
 import { Link, Outlet, useLocation, redirect, createFileRoute } from "@tanstack/react-router";
 import { LayoutDashboard, Package, ShoppingBag, Clock, Image, Settings as SettingsIcon, Folder, Users, Home, Menu, X } from "lucide-react";
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { NotificationBell } from "@/components/NotificationBell";
 
 export const Route = createFileRoute("/admin")({
-  beforeLoad: async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      throw redirect({ to: "/login" });
-    }
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", session.user.id)
-      .maybeSingle();
-    if (profile?.role !== "admin") {
-      throw redirect({ to: "/" });
-    }
-  },
   component: AdminLayout,
 });
 
@@ -43,6 +27,19 @@ const NAV_ITEMS: Array<{
 function AdminLayout() {
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { user, isAdmin, loading } = useAuth();
+
+  if (loading) {
+    return null;
+  }
+
+  if (!user) {
+    throw redirect({ to: "/login" });
+  }
+
+  if (!isAdmin) {
+    throw redirect({ to: "/" });
+  }
 
   return (
     <div className="min-h-[100dvh] bg-background">
@@ -78,7 +75,7 @@ function AdminLayout() {
       {/* Slide-in drawer (mobile-first) */}
       {drawerOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 z-50 bg-black/40"
           onClick={() => setDrawerOpen(false)}
         >
           <aside
