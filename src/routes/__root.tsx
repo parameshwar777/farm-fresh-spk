@@ -37,8 +37,11 @@ export const Route = createRootRoute({
       {
         name: "viewport",
         content:
-          "width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0",
+          "width=device-width, initial-scale=1.0, viewport-fit=cover",
       },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { title: "SPK Natural Farming — Fresh From Farm" },
       {
         name: "description",

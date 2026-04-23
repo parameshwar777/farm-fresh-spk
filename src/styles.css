@@ -183,6 +183,23 @@
     box-shadow: 0 0 60px rgba(0,0,0,0.06);
     position: relative;
   }
+
+  /* Capacitor / Android WebView keyboard handling.
+   * Prevent the page from being pushed and frozen when the soft keyboard opens.
+   * `interactive-widget=resizes-content` in viewport + these rules keep layout stable. */
+  html, body {
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  body {
+    /* Allow inputs to scroll into view smoothly */
+    scroll-behavior: smooth;
+  }
+  input, textarea, select {
+    /* Prevent iOS zoom on focus & Android jank */
+    font-size: 16px;
+  }
 }
 
 @layer utilities {
