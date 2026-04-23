@@ -12,13 +12,6 @@ const config: CapacitorConfig = {
   appId: "com.spk.naturalfarming",
   appName: "SPK Natural Farming",
   webDir: "dist",
-  // Use this while testing — points the APK at the live web app.
-  // Remove or comment out for a production offline build.
-  server: {
-    url: "https://farm-fresh-spk.lovable.app",
-    cleartext: true,
-    androidScheme: "https",
-  },
   android: {
     allowMixedContent: true,
     webContentsDebuggingEnabled: true,

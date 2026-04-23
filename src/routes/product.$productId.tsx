@@ -8,6 +8,7 @@ import { supabase, type Product } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/store/cart";
 import { ProductImage } from "@/components/ProductImage";
+import { useAppBack } from "@/hooks/useAppBack";
 
 export const Route = createFileRoute("/product/$productId")({
   component: ProductDetailPage,
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/product/$productId")({
 function ProductDetailPage() {
   const { productId } = Route.useParams();
   const navigate = useNavigate();
+  const { goBack } = useAppBack("/shop");
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [qty, setQty] = useState(1);
@@ -77,7 +79,7 @@ function ProductDetailPage() {
     <div className="min-h-[100dvh] pb-32">
       <header className="safe-top sticky top-0 z-30 flex items-center gap-3 bg-background/90 px-4 py-3 backdrop-blur">
         <button
-          onClick={() => window.history.back()}
+          onClick={() => goBack("/shop")}
           className="flex h-9 w-9 items-center justify-center rounded-full bg-card"
           aria-label="Back"
         >

@@ -17,7 +17,7 @@ export function TopBar() {
             <p className="text-[10px] text-muted-foreground">Fresh From Farm</p>
           </div>
         </Link>
-        <Link to="/cart" className="relative" aria-label="Cart">
+        <Link to="/cart" preload="render" className="relative" aria-label="Cart">
           <motion.div
             whileTap={{ scale: 0.9 }}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-card"

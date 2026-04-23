@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getAvailableSlots } from "@/lib/deliverySlots";
+import { useAppBack } from "@/hooks/useAppBack";
 
 declare global {
   interface Window {
@@ -66,6 +67,7 @@ const EMPTY_ADDR = {
 
 function CartPage() {
   const navigate = useNavigate();
+  const { goBack } = useAppBack("/shop");
   const { user, profile, loading: authLoading } = useAuth();
   const { items, setQuantity, remove, subtotal, clear } = useCart();
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -302,7 +304,7 @@ function CartPage() {
     <div className="min-h-[100dvh] pb-32">
       <header className="safe-top sticky top-0 z-30 flex items-center gap-3 bg-background/90 px-4 py-3 backdrop-blur">
         <button
-          onClick={() => window.history.back()}
+          onClick={() => goBack("/shop")}
           className="flex h-9 w-9 items-center justify-center rounded-full bg-card"
           aria-label="Back"
         >
