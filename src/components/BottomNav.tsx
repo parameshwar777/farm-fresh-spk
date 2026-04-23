@@ -32,6 +32,8 @@ export function BottomNav() {
             <li key={to} className="flex-1">
               <Link
                 to={to}
+                preload="intent"
+                preloadDelay={0}
                 className="relative flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-xs"
               >
                 <motion.div

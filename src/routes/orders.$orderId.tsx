@@ -11,6 +11,7 @@ import {
   type Product,
 } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAppBack } from "@/hooks/useAppBack";
 
 export const Route = createFileRoute("/orders/$orderId")({
   component: OrderTrackingPage,
@@ -26,6 +27,7 @@ const STEPS: { key: OrderStatus; label: string }[] = [
 
 function OrderTrackingPage() {
   const { orderId } = Route.useParams();
+  const { goBack } = useAppBack("/orders");
   const [order, setOrder] = useState<Order | null>(null);
   const [items, setItems] = useState<(OrderItem & { product?: Product })[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,7 +83,7 @@ function OrderTrackingPage() {
     <div className="min-h-[100dvh] pb-12">
       <header className="safe-top sticky top-0 z-30 flex items-center gap-3 bg-background/90 px-4 py-3 backdrop-blur">
         <button
-          onClick={() => window.history.back()}
+          onClick={() => goBack("/orders")}
           className="flex h-9 w-9 items-center justify-center rounded-full bg-card"
           aria-label="Back"
         >

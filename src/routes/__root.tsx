@@ -5,6 +5,7 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { AuthGate } from "@/components/AuthGate";
 import { PageTransition } from "@/components/PageTransition";
 import { AuthProvider } from "@/hooks/useAuth";
+import { AppBackHandler } from "@/hooks/useAppBack";
 import { AppVersionGate } from "@/components/AppVersionGate";
 
 import appCss from "../styles.css?url";
@@ -103,6 +104,7 @@ function RootComponent() {
   return (
     <div className="mobile-frame">
       <AuthProvider>
+        <AppBackHandler />
         <AppVersionGate>
           <AuthGate>
             <PageTransition>
