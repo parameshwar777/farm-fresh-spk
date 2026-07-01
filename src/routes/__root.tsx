@@ -8,7 +8,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AppBackHandler } from "@/hooks/useAppBack";
 import { AppVersionGate } from "@/components/AppVersionGate";
-import { useAuth } from "@/hooks/useAuth";
+
 
 import appCss from "../styles.css?url";
 
