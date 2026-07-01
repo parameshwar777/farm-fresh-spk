@@ -92,11 +92,11 @@ export function useCachedQuery<T>(
 ) {
   const { staleMs = 30_000 } = options;
   const [data, setData] = useState<T | undefined>(() =>
-    key ? (cache.get(key)?.data as T | undefined) : undefined,
+    key ? getCached<T>(key) : undefined,
   );
   const [loading, setLoading] = useState<boolean>(() => {
     if (!key) return false;
-    return !cache.has(key);
+    return getCached<T>(key) === undefined;
   });
   const [error, setError] = useState<Error | null>(null);
 
@@ -107,12 +107,12 @@ export function useCachedQuery<T>(
       return;
     }
     let cancelled = false;
-    const cached = cache.get(key) as CacheEntry<T> | undefined;
-    if (cached) {
-      setData(cached.data);
+    const cachedData = getCached<T>(key);
+    const cachedEntry = MEM.get(key) as CacheEntry<T> | undefined;
+    if (cachedData !== undefined) {
+      setData(cachedData);
       setLoading(false);
-      // Skip background refresh if fresh
-      if (Date.now() - cached.fetchedAt < staleMs) return;
+      if (cachedEntry && Date.now() - cachedEntry.fetchedAt < staleMs) return;
     } else {
       setLoading(true);
     }
@@ -125,7 +125,7 @@ export function useCachedQuery<T>(
 
     promise
       .then((result) => {
-        cache.set(key, { data: result, fetchedAt: Date.now() });
+        setCached(key, result);
         if (!cancelled) {
           setData(result);
           setLoading(false);
