@@ -59,8 +59,10 @@ export const getRouter = () => {
     routeTree,
     context: {},
     scrollRestoration: true,
-    defaultPreload: "intent",
-    defaultPreloadStaleTime: 30_000,
+    // Preloading was throwing `_nonReactive` errors in the built bundle and
+    // stalling every tab switch. Disable — routes are tiny and load instantly.
+    defaultPreload: false,
+    defaultPreloadStaleTime: 60_000,
     defaultPendingMs: 0,
     defaultPendingMinMs: 0,
     defaultErrorComponent: DefaultErrorComponent,
