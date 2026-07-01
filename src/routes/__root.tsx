@@ -1,13 +1,14 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouter } from "@tanstack/react-router";
+import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { Toaster } from "sonner";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { SplashScreen } from "@/components/SplashScreen";
+
 import { AuthGate } from "@/components/AuthGate";
 import { PageTransition } from "@/components/PageTransition";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AppBackHandler } from "@/hooks/useAppBack";
 import { AppVersionGate } from "@/components/AppVersionGate";
-import { useAuth } from "@/hooks/useAuth";
+
 
 import appCss from "../styles.css?url";
 
@@ -123,27 +124,9 @@ function RootComponent() {
 }
 
 function RouteWarmup() {
-  const router = useRouter();
-  const { user, profile } = useAuth();
-
-  useEffect(() => {
-    void router.preloadRoute({ to: "/shop" });
-    void router.preloadRoute({ to: "/cart" });
-    void router.preloadRoute({ to: "/profile" });
-
-    if (user) {
-      void router.preloadRoute({ to: "/orders" });
-    }
-
-    if (profile?.role === "admin") {
-      void router.preloadRoute({ to: "/admin" });
-      void router.preloadRoute({ to: "/admin/products" });
-    }
-
-    if (profile?.role === "merchant") {
-      void router.preloadRoute({ to: "/merchant" });
-    }
-  }, [profile?.role, router, user]);
-
+  // Previously called router.preloadRoute for every tab, which threw
+  // "_nonReactive" in the built bundle and blocked navigation. Removed —
+  // routes are code-split-tiny and mount instantly on tap.
   return null;
 }
+

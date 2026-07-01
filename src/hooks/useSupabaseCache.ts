@@ -1,42 +1,84 @@
 import { useEffect, useState } from "react";
 
 /**
- * Tiny in-memory cache for Supabase queries.
+ * Tiny SWR-style cache for Supabase queries, persisted to localStorage.
  *
- * Why: route components were calling supabase on every mount, which made
- * tabs feel laggy (network round-trip on every nav). With this cache, the
- * second visit to a tab renders cached data INSTANTLY while a background
- * refetch keeps things fresh.
+ * - First mount: reads cached data from localStorage → renders INSTANTLY.
+ * - Background: refetches if stale, updates cache + UI when it lands.
+ * - Second launch of the app: still instant, no white screen.
  *
- * Not a replacement for React Query — just a tiny SWR-style cache scoped to
- * the SPA session. Cleared on full page reload.
+ * Persistence is critical for the native APK: previously every cold start
+ * hit the network for categories/products before showing anything.
  */
 
-type CacheEntry<T> = {
-  data: T;
-  fetchedAt: number;
-};
+type CacheEntry<T> = { data: T; fetchedAt: number };
 
-const cache = new Map<string, CacheEntry<unknown>>();
+const MEM = new Map<string, CacheEntry<unknown>>();
 const inflight = new Map<string, Promise<unknown>>();
+const LS_PREFIX = "spk-cache:";
+
+function lsGet<T>(key: string): CacheEntry<T> | undefined {
+  try {
+    const raw = typeof localStorage !== "undefined" && localStorage.getItem(LS_PREFIX + key);
+    if (!raw) return undefined;
+    return JSON.parse(raw) as CacheEntry<T>;
+  } catch {
+    return undefined;
+  }
+}
+
+function lsSet<T>(key: string, entry: CacheEntry<T>) {
+  try {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(LS_PREFIX + key, JSON.stringify(entry));
+  } catch {
+    // quota / private mode — silent
+  }
+}
 
 export function getCached<T>(key: string): T | undefined {
-  return cache.get(key)?.data as T | undefined;
+  const mem = MEM.get(key);
+  if (mem) return mem.data as T;
+  const ls = lsGet<T>(key);
+  if (ls) {
+    MEM.set(key, ls);
+    return ls.data;
+  }
+  return undefined;
 }
 
 export function setCached<T>(key: string, data: T) {
-  cache.set(key, { data, fetchedAt: Date.now() });
+  const entry = { data, fetchedAt: Date.now() };
+  MEM.set(key, entry);
+  lsSet(key, entry);
 }
 
 export function invalidateCache(prefix?: string) {
   if (!prefix) {
-    cache.clear();
+    MEM.clear();
+    try {
+      if (typeof localStorage !== "undefined") {
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith(LS_PREFIX))
+          .forEach((k) => localStorage.removeItem(k));
+      }
+    } catch {
+      /* ignore */
+    }
     return;
   }
-  for (const k of cache.keys()) {
-    if (k.startsWith(prefix)) cache.delete(k);
+  for (const k of MEM.keys()) if (k.startsWith(prefix)) MEM.delete(k);
+  try {
+    if (typeof localStorage !== "undefined") {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith(LS_PREFIX + prefix))
+        .forEach((k) => localStorage.removeItem(k));
+    }
+  } catch {
+    /* ignore */
   }
 }
+
 
 /**
  * useCachedQuery — call any async fetcher with a cache key.
@@ -50,11 +92,11 @@ export function useCachedQuery<T>(
 ) {
   const { staleMs = 30_000 } = options;
   const [data, setData] = useState<T | undefined>(() =>
-    key ? (cache.get(key)?.data as T | undefined) : undefined,
+    key ? getCached<T>(key) : undefined,
   );
   const [loading, setLoading] = useState<boolean>(() => {
     if (!key) return false;
-    return !cache.has(key);
+    return getCached<T>(key) === undefined;
   });
   const [error, setError] = useState<Error | null>(null);
 
@@ -65,12 +107,12 @@ export function useCachedQuery<T>(
       return;
     }
     let cancelled = false;
-    const cached = cache.get(key) as CacheEntry<T> | undefined;
-    if (cached) {
-      setData(cached.data);
+    const cachedData = getCached<T>(key);
+    const cachedEntry = MEM.get(key) as CacheEntry<T> | undefined;
+    if (cachedData !== undefined) {
+      setData(cachedData);
       setLoading(false);
-      // Skip background refresh if fresh
-      if (Date.now() - cached.fetchedAt < staleMs) return;
+      if (cachedEntry && Date.now() - cachedEntry.fetchedAt < staleMs) return;
     } else {
       setLoading(true);
     }
@@ -83,7 +125,7 @@ export function useCachedQuery<T>(
 
     promise
       .then((result) => {
-        cache.set(key, { data: result, fetchedAt: Date.now() });
+        setCached(key, result);
         if (!cancelled) {
           setData(result);
           setLoading(false);
