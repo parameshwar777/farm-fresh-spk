@@ -123,27 +123,9 @@ function RootComponent() {
 }
 
 function RouteWarmup() {
-  const router = useRouter();
-  const { user, profile } = useAuth();
-
-  useEffect(() => {
-    void router.preloadRoute({ to: "/shop" });
-    void router.preloadRoute({ to: "/cart" });
-    void router.preloadRoute({ to: "/profile" });
-
-    if (user) {
-      void router.preloadRoute({ to: "/orders" });
-    }
-
-    if (profile?.role === "admin") {
-      void router.preloadRoute({ to: "/admin" });
-      void router.preloadRoute({ to: "/admin/products" });
-    }
-
-    if (profile?.role === "merchant") {
-      void router.preloadRoute({ to: "/merchant" });
-    }
-  }, [profile?.role, router, user]);
-
+  // Previously called router.preloadRoute for every tab, which threw
+  // "_nonReactive" in the built bundle and blocked navigation. Removed —
+  // routes are code-split-tiny and mount instantly on tap.
   return null;
 }
+
