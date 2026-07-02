@@ -464,7 +464,7 @@ function CartPage() {
         <div className="safe-bottom fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[480px] border-t border-border bg-background/95 p-3 backdrop-blur">
           <motion.button
             whileTap={{ scale: 0.97 }}
-            disabled={submitting || authLoading}
+            disabled={submitting}
             onClick={placeOrder}
             className="h-12 w-full rounded-full bg-primary font-display text-base font-bold text-primary-foreground shadow-md disabled:opacity-60"
           >
