@@ -1,10 +1,8 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Printer, FileDown, Truck, CheckCircle2, LogOut, RefreshCw, Search } from "lucide-react";
+import { CheckCircle2, LogOut, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { supabase, type Order, type OrderItem, type Address, type Profile } from "@/integrations/supabase/client";
 import { signOut, useAuth } from "@/hooks/useAuth";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -28,13 +26,13 @@ function MerchantPortal() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const canAccess = !!user && (isMerchant || isAdmin);
 
-  const load = async () => {
-    setLoading(true);
-    // Paid orders only
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
+    // Show paid online orders plus COD orders awaiting cash collection.
     const { data: ordersData, error: ordersErr } = await supabase
       .from("orders")
       .select("*")
-      .eq("payment_status", "paid")
+      .or("payment_status.eq.paid,payment_method.eq.cod")
       .order("created_at", { ascending: false })
       .limit(200);
 
@@ -107,7 +105,7 @@ function MerchantPortal() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "orders" },
-        () => load(),
+        () => load(true),
       )
       .subscribe();
     return () => {
@@ -116,15 +114,14 @@ function MerchantPortal() {
   }, [canAccess]);
 
   const markDelivered = async (id: string) => {
-    if (!confirm("Mark this order as DELIVERED?")) return;
     setBusyId(id);
     const { error } = await supabase
       .from("orders")
-      .update({ status: "delivered" })
+      .update({ status: "delivered", payment_status: "paid" })
       .eq("id", id);
     setBusyId(null);
     if (error) toast.error(error.message);
-    else toast.success("Marked as delivered");
+    else toast.success("Cash collected · delivered");
   };
 
   const filtered = useMemo(() => {
@@ -180,9 +177,6 @@ function MerchantPortal() {
           </div>
           <div className="flex items-center gap-2">
             <NotificationBell tone="accent" />
-            <Link to="/" className="text-xs text-accent-foreground/80 underline">
-              Customer
-            </Link>
             <button
               onClick={handleLogout}
               className="rounded-full bg-accent-foreground/10 p-2 text-accent-foreground"
@@ -234,31 +228,13 @@ function MerchantPortal() {
             />
           </div>
           <button
-            onClick={load}
+            onClick={() => load()}
             className="flex h-10 items-center justify-center rounded-2xl bg-card px-3 text-primary"
             aria-label="Refresh"
           >
             <RefreshCw className="h-4 w-4" />
           </button>
         </div>
-
-        {/* Bulk actions */}
-        {tab === "to_deliver" && filtered.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-2 print:hidden">
-            <button
-              onClick={() => printBulk(filtered)}
-              className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground"
-            >
-              <Printer className="h-3.5 w-3.5" /> Print all ({filtered.length})
-            </button>
-            <button
-              onClick={() => downloadBulkPDF(filtered)}
-              className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-secondary-foreground"
-            >
-              <FileDown className="h-3.5 w-3.5" /> Download bulk PDF
-            </button>
-          </div>
-        )}
 
         {loading ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Loading orders…</p>
@@ -355,177 +331,28 @@ function OrderCard({
       </ul>
 
       {/* Actions */}
-      <div className="mt-4 flex flex-wrap gap-2 print:hidden">
-        <button
-          onClick={() => printSlip(order)}
-          className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-bold text-foreground"
-        >
-          <Printer className="h-3.5 w-3.5" /> Print
-        </button>
-        <button
-          onClick={() => downloadSlipPDF(order)}
-          className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-bold text-foreground"
-        >
-          <FileDown className="h-3.5 w-3.5" /> PDF
-        </button>
+      <div className="mt-4 print:hidden">
         {showDeliverBtn && (
           <button
             onClick={onDeliver}
             disabled={busy}
-            className="ml-auto flex items-center gap-1.5 rounded-full bg-success px-4 py-1.5 text-xs font-bold text-success-foreground disabled:opacity-60"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-success text-sm font-extrabold text-success-foreground shadow-sm disabled:opacity-60"
           >
             {busy ? (
-              "..."
+              "Updating..."
             ) : (
               <>
-                <CheckCircle2 className="h-3.5 w-3.5" /> Mark delivered
+                <CheckCircle2 className="h-5 w-5" /> Cash collected & delivered
               </>
             )}
           </button>
         )}
         {!showDeliverBtn && order.status === "delivered" && (
-          <span className="ml-auto flex items-center gap-1 text-xs font-bold text-success">
-            <Truck className="h-3.5 w-3.5" /> Delivered
+          <span className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-spk-badge text-sm font-bold text-spk-badge-fg">
+            <CheckCircle2 className="h-4 w-4" /> Delivered · cash collected
           </span>
         )}
       </div>
     </li>
   );
-}
-
-// =============== PDF / Print helpers ===============
-
-function buildSlipPDF(orders: EnrichedOrder[], title: string): jsPDF {
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
-  const pageWidth = doc.internal.pageSize.getWidth();
-
-  orders.forEach((o, idx) => {
-    if (idx > 0) doc.addPage();
-
-    // Header
-    doc.setFillColor(27, 67, 50);
-    doc.rect(0, 0, pageWidth, 60, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text("SPK Natural Farming", 40, 28);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text("Fresh from farm — delivery slip", 40, 46);
-
-    doc.setTextColor(0, 0, 0);
-
-    // Order info
-    let y = 90;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text(`Order #${o.id.slice(0, 8).toUpperCase()}`, 40, y);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(format(new Date(o.created_at), "dd MMM yyyy · HH:mm"), pageWidth - 40, y, {
-      align: "right",
-    });
-
-    y += 24;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text("Customer", 40, y);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    y += 14;
-    doc.text(o.customer?.full_name || "(no name)", 40, y);
-    if (o.customer?.phone_number || o.customer?.phone) {
-      y += 13;
-      doc.text(`Phone: ${o.customer.phone_number || o.customer.phone}`, 40, y);
-    }
-    if (o.address) {
-      y += 13;
-      const addrLines = doc.splitTextToSize(
-        `Address: ${o.address.full_address}, ${o.address.city} - ${o.address.pincode}`,
-        pageWidth - 80,
-      );
-      doc.text(addrLines, 40, y);
-      y += addrLines.length * 13;
-    }
-
-    y += 10;
-    autoTable(doc, {
-      startY: y,
-      head: [["Item", "Qty", "Unit", "Price", "Total"]],
-      body: o.items.map((it) => [
-        it.product_name,
-        String(it.quantity),
-        it.unit,
-        `Rs. ${Number(it.price_at_time).toFixed(0)}`,
-        `Rs. ${(Number(it.price_at_time) * Number(it.quantity)).toFixed(0)}`,
-      ]),
-      theme: "striped",
-      headStyles: { fillColor: [27, 67, 50] },
-      styles: { fontSize: 10 },
-    });
-
-    type DocWithTable = jsPDF & { lastAutoTable?: { finalY: number } };
-    const finalY = (doc as DocWithTable).lastAutoTable?.finalY ?? y + 100;
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text(`Total: Rs. ${Number(o.total_amount).toFixed(0)}`, pageWidth - 40, finalY + 22, {
-      align: "right",
-    });
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text(
-      `Payment: ${o.payment_method.toUpperCase()} · ${o.payment_status.toUpperCase()}`,
-      40,
-      finalY + 22,
-    );
-
-    // Footer
-    doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120);
-    doc.text(
-      `${title} · Page ${idx + 1} of ${orders.length}`,
-      pageWidth / 2,
-      doc.internal.pageSize.getHeight() - 20,
-      { align: "center" },
-    );
-    doc.setTextColor(0, 0, 0);
-  });
-
-  return doc;
-}
-
-function downloadSlipPDF(order: EnrichedOrder) {
-  const doc = buildSlipPDF([order], "Delivery slip");
-  doc.save(`order-${order.id.slice(0, 8)}.pdf`);
-}
-
-function downloadBulkPDF(orders: EnrichedOrder[]) {
-  const doc = buildSlipPDF(orders, "Bulk delivery slips");
-  doc.save(`delivery-${format(new Date(), "yyyyMMdd-HHmm")}.pdf`);
-}
-
-function openPrint(doc: jsPDF) {
-  const blobUrl = doc.output("bloburl");
-  const w = window.open(blobUrl, "_blank");
-  if (w) {
-    w.addEventListener("load", () => {
-      try {
-        w.focus();
-        w.print();
-      } catch {
-        /* user can print manually */
-      }
-    });
-  } else {
-    toast.error("Pop-up blocked. Please allow pop-ups to print.");
-  }
-}
-
-function printSlip(order: EnrichedOrder) {
-  openPrint(buildSlipPDF([order], "Delivery slip"));
-}
-
-function printBulk(orders: EnrichedOrder[]) {
-  openPrint(buildSlipPDF(orders, "Bulk delivery slips"));
 }

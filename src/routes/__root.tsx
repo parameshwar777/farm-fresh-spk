@@ -1,7 +1,6 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { Toaster } from "sonner";
-import { useState } from "react";
-import { SplashScreen } from "@/components/SplashScreen";
+import { MotionConfig } from "framer-motion";
 
 import { AuthGate } from "@/components/AuthGate";
 import { PageTransition } from "@/components/PageTransition";
@@ -65,19 +64,6 @@ export const Route = createRootRoute({
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", type: "image/png", href: "/favicon.ico" },
-      {
-        rel: "preconnect",
-        href: "https://fonts.googleapis.com",
-      },
-      {
-        rel: "preconnect",
-        href: "https://fonts.gstatic.com",
-        crossOrigin: "anonymous",
-      },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap",
-      },
     ],
   }),
   shellComponent: RootShell,
@@ -100,33 +86,22 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  // Splash plays on every app open (fresh page load)
-  const [showSplash, setShowSplash] = useState(true);
-
   return (
     <div className="mobile-frame">
-      <AuthProvider>
-        <AppBackHandler />
-        <RouteWarmup />
-        <AppVersionGate>
-          <AuthGate>
-            <PageTransition>
-              <Outlet />
-            </PageTransition>
-          </AuthGate>
-        </AppVersionGate>
-      </AuthProvider>
-      {/* Splash sits on top — covers any auth-redirect flicker underneath */}
-      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+      <MotionConfig reducedMotion="always">
+        <AuthProvider>
+          <AppBackHandler />
+          <AppVersionGate>
+            <AuthGate>
+              <PageTransition>
+                <Outlet />
+              </PageTransition>
+            </AuthGate>
+          </AppVersionGate>
+        </AuthProvider>
+      </MotionConfig>
       <Toaster position="top-center" richColors closeButton theme="light" />
     </div>
   );
-}
-
-function RouteWarmup() {
-  // Previously called router.preloadRoute for every tab, which threw
-  // "_nonReactive" in the built bundle and blocked navigation. Removed —
-  // routes are code-split-tiny and mount instantly on tap.
-  return null;
 }
 
