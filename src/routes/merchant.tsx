@@ -1,4 +1,4 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { CheckCircle2, LogOut, RefreshCw, Search } from "lucide-react";
@@ -228,7 +228,7 @@ function MerchantPortal() {
             />
           </div>
           <button
-            onClick={load}
+            onClick={() => load()}
             className="flex h-10 items-center justify-center rounded-2xl bg-card px-3 text-primary"
             aria-label="Refresh"
           >
