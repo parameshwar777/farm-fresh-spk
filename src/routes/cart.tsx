@@ -32,7 +32,7 @@ const EMPTY_ADDR = {
 function CartPage() {
   const navigate = useNavigate();
   const { goBack } = useAppBack("/shop");
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile } = useAuth();
   const { items, setQuantity, remove, subtotal, clear } = useCart();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [addressId, setAddressId] = useState<string>("");
