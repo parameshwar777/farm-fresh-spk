@@ -12,7 +12,7 @@ function isPublic(pathname: string) {
 }
 
 export function AuthGate({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -20,11 +20,19 @@ export function AuthGate({ children }: { children: ReactNode }) {
     if (loading) return;
     if (!user && !isPublic(location.pathname)) {
       navigate({ to: "/login", replace: true });
+      return;
+    }
+    if (user && profile?.role === "merchant" && !location.pathname.startsWith("/merchant")) {
+      navigate({ to: "/merchant", replace: true });
+      return;
     }
     if (user && location.pathname === "/login") {
-      navigate({ to: "/", replace: true });
+      navigate({
+        to: profile?.role === "admin" ? "/admin" : "/",
+        replace: true,
+      });
     }
-  }, [user, loading, location.pathname, navigate]);
+  }, [user, profile?.role, loading, location.pathname, navigate]);
 
   // Loading state — small splash to avoid flicker
   if (loading) {

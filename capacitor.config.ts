@@ -3,32 +3,26 @@ import type { CapacitorConfig } from "@capacitor/cli";
 /**
  * Capacitor configuration for SPK Natural Farming.
  *
- * IMPORTANT — replace `server.url` with your published Lovable URL when you
- * want the native app to load the live web build. For a fully offline APK
- * (recommended for Play Store), comment out `server` and run `bun run build`
- * before `npx cap sync` so the static `dist/` is bundled.
+ * The Android app uses bundled web assets from `dist/client` for fast startup.
+ * Run `npm run build && npx cap sync android` before rebuilding the APK.
  */
 const config: CapacitorConfig = {
   appId: "com.spk.naturalfarming",
   appName: "SPK Natural Farming",
   webDir: "dist/client",
-  server: {
-    url: "https://farm-fresh-spk.lovable.app",
-    cleartext: false,
-  },
   android: {
     allowMixedContent: true,
     webContentsDebuggingEnabled: true,
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 1500,
+      launchShowDuration: 300,
       backgroundColor: "#FAFAF5",
       androidSplashResourceName: "splash",
       androidScaleType: "CENTER_CROP",
       showSpinner: false,
-      splashFullScreen: true,
-      splashImmersive: true,
+      splashFullScreen: false,
+      splashImmersive: false,
     },
     Keyboard: {
       // `resize: "native"` prevents the white-frame freeze you were seeing

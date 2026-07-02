@@ -12,6 +12,26 @@ type AuthState = {
 };
 
 const AuthContext = createContext<AuthState | null>(null);
+const PROFILE_CACHE_PREFIX = "spk-profile:";
+
+function readCachedProfile(userId: string): Profile | null {
+  try {
+    if (typeof window === "undefined") return null;
+    const raw = window.localStorage.getItem(PROFILE_CACHE_PREFIX + userId);
+    return raw ? (JSON.parse(raw) as Profile) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedProfile(profile: Profile | null) {
+  try {
+    if (typeof window === "undefined" || !profile?.id) return;
+    window.localStorage.setItem(PROFILE_CACHE_PREFIX + profile.id, JSON.stringify(profile));
+  } catch {
+    // localStorage may be unavailable or full — ignore.
+  }
+}
 
 /**
  * Single auth subscription for the whole app.
@@ -41,8 +61,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!sess?.user) {
         setProfile(null);
-        if (finishLoading) setLoading(false);
+        setLoading(false);
         return;
+      }
+
+      const cachedProfile = readCachedProfile(sess.user.id);
+      if (cachedProfile) {
+        setProfile(cachedProfile);
+        setLoading(false);
+      } else {
+        setLoading(true);
       }
 
       const { data } = await supabase
@@ -54,7 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!active) return;
 
       setProfile(data as Profile | null);
-      if (finishLoading) setLoading(false);
+      writeCachedProfile(data as Profile | null);
+      if (finishLoading || !cachedProfile) setLoading(false);
     };
 
     const {
